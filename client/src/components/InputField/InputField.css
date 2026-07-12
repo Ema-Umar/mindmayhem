@@ -1,0 +1,55 @@
+.input-field{
+
+    position:relative;
+
+    margin-bottom:22px;
+
+}
+
+.input-icon{
+
+    position:absolute;
+
+    left:22px;
+
+    top:50%;
+
+    transform:translateY(-50%);
+
+    color:#B2AFD2;
+
+    font-size:20px;
+
+}
+
+.input-field input{
+
+    width:100%;
+
+    height:68px;
+
+    border:none;
+
+    outline:none;
+
+    border-radius:18px;
+
+    background:#221A4A;
+
+    color:white;
+
+    padding-left:60px;
+
+    font-size:18px;
+
+    transition:.3s;
+
+}
+
+.input-field input:focus{
+
+    box-shadow:
+
+    0 0 15px #FF2D8D;
+
+}

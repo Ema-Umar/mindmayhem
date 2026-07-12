@@ -1,0 +1,201 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&display=swap');
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:"Baloo 2",sans-serif;
+}
+
+body{
+
+    background:#0B0822;
+
+}
+
+.login-page{
+
+    width:100%;
+
+    min-height:100vh;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    background:#0B0822;
+
+    position:relative;
+
+    overflow:hidden;
+
+}
+.background-circle{
+
+    position:absolute;
+
+    border-radius:50%;
+
+    filter:blur(120px);
+
+}
+
+.circle1{
+
+    width:450px;
+
+    height:450px;
+
+    background:#6425ff66;
+
+    left:-180px;
+
+    top:-180px;
+
+}
+
+.circle2{
+
+    width:500px;
+
+    height:500px;
+
+    background:#ff2d8d44;
+
+    right:-200px;
+
+    bottom:-200px;
+
+}
+.login-card{
+
+    width:1150px;
+
+    height:650px;
+
+    background:#171238;
+
+    border-radius:40px;
+
+    display:flex;
+
+    overflow:hidden;
+
+    position:relative;
+
+    box-shadow:
+
+    0 30px 80px rgba(0,0,0,.55);
+
+}
+.login-left{
+
+    width:48%;
+
+    background:#221A4A;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    position:relative;
+
+}
+
+.login-image{
+
+    width:80%;
+
+    z-index:5;
+
+}
+.paint{
+
+    position:absolute;
+
+    border-radius:50%;
+
+}
+
+.paint1{
+
+    width:220px;
+
+    height:220px;
+
+    background:#FF2D8D;
+
+    left:40px;
+
+    top:60px;
+
+    filter:blur(90px);
+
+    opacity:.35;
+
+}
+
+.paint2{
+
+    width:250px;
+
+    height:250px;
+
+    background:#18D8D8;
+
+    right:40px;
+
+    bottom:50px;
+
+    filter:blur(90px);
+
+    opacity:.30;
+
+}
+.login-right{
+
+    width:52%;
+
+    padding:70px;
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:center;
+
+}
+
+.forgot-password{
+
+    color:#19d7d7;
+
+    margin:10px 0 30px;
+
+    cursor:pointer;
+
+}
+
+.register-link{
+
+    text-align:center;
+
+    color:white;
+
+    margin-top:30px;
+
+}
+
+.register-link span{
+
+    color:#19d7d7;
+
+    cursor:pointer;
+
+    margin-left:6px;
+
+}
