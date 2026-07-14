@@ -1,0 +1,327 @@
+:root {
+  --bg-dark: #0b071e;
+  --bg-card: #150f31;
+  --bg-item: #1d1540;
+  --text-main: #ffffff;
+  --text-muted: #8b85b4;
+  --accent-pink: #f72585;
+  --accent-green: #4ade80;
+  --accent-red: #f87171;
+  --accent-gold: #ffbd00;
+}
+
+.web-room-wrapper {
+  min-height: 100vh;
+  background-color: var(--bg-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem;
+  box-sizing: border-box;
+}
+
+.room-lobby-container {
+  width: 100%;
+  max-width: 1200px;
+  background-color: var(--bg-card);
+  padding: 2.5rem;
+  border-radius: 28px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+/* Widescreen Desktop Header layout alignment specs */
+.lobby-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.room-title-area h1 {
+  font-size: 2.2rem;
+  font-weight: 900;
+  margin: 0;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.crown-icon-gold {
+  color: var(--accent-gold);
+  fill: var(--accent-gold);
+}
+
+.back-btn {
+  background: var(--bg-item);
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.65rem 1.25rem;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.back-btn:hover {
+  color: var(--text-main);
+  background: #271c57;
+}
+
+.lobby-actions {
+  display: flex;
+  gap: 0.85rem;
+}
+
+.action-circle-btn {
+  background: var(--bg-item);
+  border: none;
+  color: var(--text-main);
+  padding: 0.8rem;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-circle-btn:hover {
+  background: #271c57;
+  transform: translateY(-2px);
+}
+
+/* Horizontal split sectioning blueprint */
+.lobby-workspace {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 3rem;
+  align-items: start;
+}
+
+.lobby-left-panel, .lobby-right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Left Column Styling Details */
+.code-display-card {
+  background: rgba(0, 0, 0, 0.15);
+  padding: 2rem;
+  border-radius: 20px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.code-label {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.code-box {
+  background-color: var(--bg-item);
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  padding: 1rem 2rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.code-box:hover {
+  border-color: var(--accent-gold);
+  background: #251a54;
+}
+
+.room-code {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: var(--accent-gold);
+}
+
+.copied-icon {
+  color: var(--accent-green);
+}
+
+/* Match Control Elements */
+.match-status-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.status-indicator {
+  border: 2px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--accent-pink);
+  border-radius: 50%;
+  animation: pulse 1.6s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.6; }
+}
+
+.start-game-btn {
+  background-color: var(--accent-pink);
+  color: var(--text-main);
+  border: none;
+  border-radius: 16px;
+  padding: 1.25rem;
+  font-size: 1.2rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  box-shadow: 0 8px 24px rgba(247, 37, 133, 0.3);
+}
+
+.start-game-btn:hover {
+  opacity: 0.95;
+}
+
+.start-game-btn:active {
+  transform: scale(0.98);
+}
+
+/* Right Column Panel Structure */
+.panel-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.counter-badge {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.player-list-scrollable {
+  max-height: 480px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-right: 0.5rem;
+}
+
+/* Custom UI web scrollbar styling mechanics */
+.player-list-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+.player-list-scrollable::-webkit-scrollbar-thumb {
+  background: var(--bg-item);
+  border-radius: 10px;
+}
+
+.player-row-item {
+  background-color: var(--bg-item);
+  border-radius: 16px;
+  padding: 0.95rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.2s;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.player-row-item:hover {
+  background-color: #271c57;
+}
+
+.player-left-info {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.player-avatar {
+  width: 42px;
+  height: 42px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.05);
+}
+
+.player-name {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.you-tag {
+  color: var(--accent-green);
+  font-size: 0.95rem;
+  margin-left: 0.25rem;
+  font-weight: 600;
+}
+
+/* Badges for active room player states */
+.owner-badge {
+  color: var(--accent-gold);
+  font-weight: 700;
+  font-size: 0.95rem;
+  background-color: rgba(255, 189, 0, 0.1);
+  padding: 0.35rem 0.85rem;
+  border-radius: 20px;
+}
+
+.status-lbl {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.status-lbl.ready {
+  color: var(--accent-green);
+}
+
+.status-lbl.not-ready {
+  color: var(--accent-red);
+}
+
+/* Responsiveness break rules down for smaller windows */
+@media (max-width: 900px) {
+  .lobby-workspace {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+}
