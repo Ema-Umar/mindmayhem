@@ -379,3 +379,229 @@ body {
     grid-template-columns: 1fr;
   }
 }
+/* Loading State */
+.dashboard-container.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.loader {
+  font-size: 24px;
+  color: #00d4ff;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Online Status */
+.online-status {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  background: #4ade80;
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+
+.avatar-wrapper {
+  position: relative;
+}
+
+/* Stats */
+.hero-stats {
+  display: flex;
+  gap: 20px;
+  margin-top: 10px;
+}
+
+.hero-stats span {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+/* Games Played */
+.games-played {
+  font-size: 12px;
+  color: #999;
+  margin-left: 8px;
+}
+
+/* Logout Button */
+.logout-btn {
+  margin-top: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 15px;
+  color: #ff6b6b !important;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 107, 107, 0.1);
+}
+
+/* Quick Play Card */
+.card.quick-play {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.card.quick-play:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.card.quick-play svg {
+  margin-bottom: 10px;
+}
+
+/* Notification Badge */
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #ff6b6b;
+  color: white;
+  font-size: 10px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn {
+  position: relative;
+}
+
+/* Room Host */
+.room-host {
+  font-size: 11px;
+  color: #888;
+  margin-top: 2px;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #888;
+}
+
+.empty-state p {
+  font-size: 16px;
+}
+
+/* Room Icon Backgrounds */
+.icon-bg-1 {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.icon-bg-2 {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.icon-bg-3 {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+/* Refresh Button */
+.header-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #888;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.3s;
+}
+
+.refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Status Badges */
+.status-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-left: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.playing {
+  background: rgba(255, 107, 107, 0.2);
+  color: #ff6b6b;
+}
+
+.status-badge.full {
+  background: rgba(255, 165, 0, 0.2);
+  color: #ffa500;
+}
+
+/* Room Playing State */
+.room-row.room-playing {
+  opacity: 0.7;
+}
+
+.room-row.room-playing .room-icon {
+  filter: grayscale(0.3);
+}
+
+/* Join Button Disabled */
+.join-btn.disabled {
+  background: #2a2a4a;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.join-btn.disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Create Room Button in Empty State */
+.create-room-btn {
+  margin-top: 15px;
+  padding: 10px 30px;
+  background: linear-gradient(135deg, #00d4ff 0%, #7b2ffc 100%);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.create-room-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 25px rgba(0, 212, 255, 0.3);
+}
+
+/* Hero Stats Update */
+.hero-stats span:last-child {
+  background: rgba(255, 255, 255, 0.05);
+}

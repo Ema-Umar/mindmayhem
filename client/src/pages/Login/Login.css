@@ -167,6 +167,15 @@
   gap: 1.25rem;
 }
 
+/* Form header - FIXED: white color for dark theme */
+.form-desktop-header {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 25px;
+  color: var(--text-main);
+  text-align: center;
+}
+
 .input-icon-wrapper {
   position: relative;
   display: flex;
@@ -192,24 +201,38 @@
   transition: all 0.2s ease;
 }
 
+/* FIXED: Focus color changed from pink to teal for better theme consistency */
 .input-icon-wrapper input:focus {
-  border-color: var(--accent-pink);
+  border-color: var(--accent-teal);
   background-color: rgba(27, 19, 62, 0.5);
+  box-shadow: 0 0 0 3px rgba(0, 245, 212, 0.15);
 }
 
+/* Error state for input wrapper */
+.input-icon-wrapper.has-error input {
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.15);
+}
+
+/* Forgot password row - FIXED: merged both definitions, proper alignment */
 .forgot-password-row {
-  text-align: right;
-  margin-top: -0.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: -5px 0 0 0;
 }
 
+/* FIXED: Forgot link uses teal accent, consistent with theme */
 .forgot-link {
   color: var(--accent-teal);
   text-decoration: none;
   font-size: 0.95rem;
   font-weight: 600;
+  transition: opacity 0.2s;
 }
 
 .forgot-link:hover {
+  opacity: 0.8;
   text-decoration: underline;
 }
 
@@ -234,6 +257,13 @@
 
 .login-submit-btn:active {
   transform: scale(0.99);
+}
+
+/* Disabled button state */
+.login-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none !important;
 }
 
 /* Horizontal Decorative Text Divider Row */
@@ -281,7 +311,13 @@
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Redirection Footer Row Text Link */
+/* Social buttons disabled state */
+.social-oauth-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Redirection Footer Row Text Link - FIXED: .cyan-link to match JSX */
 .register-redirect-text {
   text-align: center;
   color: var(--text-muted);
@@ -290,14 +326,111 @@
   font-weight: 500;
 }
 
-.teal-link {
+.cyan-link, .teal-link {
   color: var(--accent-teal);
   text-decoration: none;
   font-weight: 700;
+  cursor: pointer;
 }
 
-.teal-link:hover {
+.cyan-link:hover, .teal-link:hover {
   text-decoration: underline;
+}
+
+/* Error message - FIXED: better contrast for dark theme */
+.error-message-global {
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.4);
+  color: #ff8a8a;
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 15px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Remember Me checkbox - FIXED: proper dark theme colors */
+.remember-me-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.remember-me-checkbox input {
+  display: none;
+}
+
+.remember-me-checkbox .checkmark {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  display: inline-block;
+  position: relative;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.remember-me-checkbox input:checked + .checkmark {
+  background: var(--accent-teal);
+  border-color: var(--accent-teal);
+}
+
+.remember-me-checkbox input:checked + .checkmark::after {
+  content: '✓';
+  color: var(--bg-dark);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* FIXED: remember text uses theme variable */
+.remember-text {
+  color: var(--text-muted);
+}
+
+/* Spinning animation for loader */
+.spinning {
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Password toggle button - FIXED: theme color */
+.toggle-password-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-password-btn:hover {
+  color: var(--text-main);
+}
+
+.toggle-password-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Responsive Adaptive Rules for smaller viewports */
