@@ -14,8 +14,10 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/Home" element={<Home />} />
         <Route path="/create-room" element={<CreateRoom />} />
-        <Route path="/room/:roomSlug" element={<GameRoom />} /> 
-        <Route path="/game" element={<GamePlay />} />
+        {/* <Route path="/room/:roomSlug" element={<GameRoom />} /> 
+        <Route path="/game" element={<GamePlay />} /> */}
+        <Route path="/room/:roomId" element={<GameRoom />} />
+<Route path="/gameplay/:roomId" element={<GamePlay />} />
       </Routes>
     </Router>
   );
