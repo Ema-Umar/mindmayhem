@@ -1,0 +1,302 @@
+/* Unique CSS Configurations for Profile Dashboard Component Views */
+
+.profile-view-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Header Avatar Banner Styling */
+.profile-identity-banner {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.profile-avatar-stack-wrapper {
+  position: relative;
+  width: 110px;
+  height: 110px;
+}
+
+.profile-master-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  background: linear-gradient(135deg, #ff416c, #ff4b2b);
+  border: 3px solid rgba(255, 255, 255, 0.05);
+}
+
+.avatar-upload-overlay-trigger {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: opacity 0.2s ease;
+}
+
+.profile-identity-meta-info h2 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0 0 0.2rem 0;
+  letter-spacing: -0.5px;
+}
+
+.level-xp-indicator {
+  color: var(--text-muted);
+  font-size: 1rem;
+  margin: 0;
+}
+
+.profile-banner-action-controls {
+  margin-left: auto;
+}
+
+.profile-action-btn {
+  background-color: var(--card-surface);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border-radius: 12px;
+  padding: 0.6rem 1.2rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.profile-action-btn.cancel {
+  background-color: rgba(228, 106, 118, 0.15);
+  color: #e46a76;
+  border-color: rgba(228, 106, 118, 0.3);
+}
+
+/* Triple Big Numerical Data Metrics Display Grid Blocks */
+.profile-triple-stats-layout {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.stat-summary-card-cell {
+  background-color: var(--card-surface);
+  border-radius: 24px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.01);
+}
+
+.stat-card-numerical-value {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.pink-accent { color: #ff477e; }
+.magenta-accent { color: #f25c54; }
+
+.stat-card-label-text {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+/* Achievements Badging Row Configurations */
+.achievements-display-section h3 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0 0 1rem 0;
+}
+
+.achievements-row-badge-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 1rem;
+}
+
+.achievement-badge-cell {
+  background-color: var(--card-surface);
+  aspect-ratio: 1;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+
+.achievement-badge-cell.active {
+  opacity: 1;
+  filter: none;
+  background: linear-gradient(180deg, var(--card-surface) 0%, rgba(31, 27, 77, 0.8) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.badge-emoji {
+  font-size: 1.6rem;
+}
+
+/* Configuration Settings Editable Drawer Block Form Elements */
+.profile-settings-form-drawer {
+  background-color: rgba(23, 21, 58, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 24px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-fields-twin-row-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.form-input-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-input-field-group label {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-input-field-group input {
+  background-color: var(--card-surface);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 0.8rem 1.2rem;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.password-accordion-wrapper {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 1rem;
+}
+
+.accordion-toggle-trigger-btn {
+  background: transparent;
+  border: none;
+  color: var(--neon-cyan);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.accordion-password-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.form-commit-save-btn {
+  background: linear-gradient(135deg, #ff416c, #ff4b2b);
+  border: none;
+  border-radius: 12px;
+  padding: 0.8rem 1.5rem;
+  color: white;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  align-self: flex-start;
+}
+
+/* Bottom Action Layout Tray Controls */
+.profile-lower-footer-actions-tray {
+  margin-top: 1rem;
+}
+
+.footer-logout-action-btn {
+  background-color: transparent;
+  border: 2px solid rgba(116, 113, 156, 0.3);
+  color: var(--text-primary);
+  padding: 0.7rem 2rem;
+  border-radius: 30px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+}
+
+.footer-logout-action-btn:hover {
+  border-color: rgba(228, 106, 118, 0.6);
+  color: #e46a76;
+}
+
+/* Feedback Notifications alerts */
+.profile-feedback-alert-card {
+  padding: 1rem 1.5rem;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+}
+
+.profile-feedback-alert-card.error {
+  background-color: rgba(228, 106, 118, 0.15);
+  color: #e46a76;
+  border: 1px solid rgba(228, 106, 118, 0.2);
+}
+
+.profile-feedback-alert-card.success {
+  background-color: rgba(0, 194, 146, 0.15);
+  color: #00c292;
+  border: 1px solid rgba(0, 194, 146, 0.2);
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsiveness Adaptations */
+@media (max-width: 992px) {
+  .achievements-row-badge-grid { grid-template-columns: repeat(4, 1fr); }
+  .accordion-password-inputs-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .profile-triple-stats-layout { grid-template-columns: 1fr; }
+  .form-fields-twin-row-grid { grid-template-columns: 1fr; }
+  .profile-identity-banner { flex-direction: column; align-items: flex-start; }
+  .profile-banner-action-controls { margin-left: 0; }
+}

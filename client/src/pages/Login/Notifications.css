@@ -1,0 +1,223 @@
+:root {
+  --bg-dark: #0b071e;
+  --bg-card: #150f31;
+  --bg-item: #1d1540;
+  --text-main: #ffffff;
+  --text-muted: #8b85b4;
+  --accent-cyan: #00d4ff;
+  --accent-purple: #7b2ffc;
+  --accent-green: #4ade80;
+  --accent-red: #f87171;
+  --accent-gold: #ffbd00;
+}
+
+.notifications-page-wrapper {
+  min-height: 100vh;
+  background-color: var(--bg-dark);
+  display: flex;
+  justify-content: center;
+  padding: 2.5rem;
+  box-sizing: border-box;
+}
+
+.notifications-page-wrapper.loading {
+  align-items: center;
+  color: var(--accent-cyan);
+  font-size: 1.1rem;
+}
+
+.notifications-container {
+  width: 100%;
+  max-width: 720px;
+  background-color: var(--bg-card);
+  padding: 2.5rem;
+  border-radius: 28px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  color: var(--text-main);
+}
+
+.notifications-header {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.notifications-header h1 {
+  font-size: 1.9rem;
+  font-weight: 900;
+  margin: 0;
+  flex: 1;
+}
+
+.back-btn {
+  background: var(--bg-item);
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.65rem 1.25rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  color: var(--text-main);
+  background: #271c57;
+}
+
+.mark-all-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--accent-cyan);
+  padding: 0.55rem 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s;
+}
+
+.mark-all-btn:hover {
+  background: rgba(0, 212, 255, 0.08);
+}
+
+.empty-notifications {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+}
+
+.empty-notifications svg {
+  color: #444;
+  margin-bottom: 0.75rem;
+}
+
+.muted-line {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.notification-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.notification-row {
+  background: var(--bg-item);
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  position: relative;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+  transition: background 0.2s;
+}
+
+.notification-row:hover {
+  background: #241a54;
+}
+
+.notification-row.unread {
+  border-color: rgba(0, 212, 255, 0.25);
+  background: rgba(0, 212, 255, 0.04);
+}
+
+.notification-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+}
+
+.notification-icon.type-friend_request { color: var(--accent-cyan); }
+.notification-icon.type-friend_accept { color: var(--accent-green); }
+.notification-icon.type-room_invite { color: var(--accent-gold); }
+
+.notification-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-message {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+  font-size: 0.98rem;
+}
+
+.notification-time {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.notification-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.accept-btn, .join-btn {
+  background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-purple) 100%);
+  color: #fff;
+  border: none;
+  padding: 0.5rem 0.9rem;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: transform 0.15s;
+}
+
+.accept-btn:hover, .join-btn:hover {
+  transform: scale(1.03);
+}
+
+.decline-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  padding: 0.5rem 0.9rem;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.2s;
+}
+
+.decline-btn:hover {
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+}
+
+.unread-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  flex-shrink: 0;
+  margin-top: 0.35rem;
+}

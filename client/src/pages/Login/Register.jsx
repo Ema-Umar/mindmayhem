@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Lock, Eye, EyeOff, Camera, ArrowLeft, Loader, CheckCircle } from 'lucide-react';
+import { User, Mail, Lock, Camera, ArrowLeft, Loader, CheckCircle } from 'lucide-react';
 import axios from 'axios';
 import './Register.css';
 
@@ -15,8 +15,6 @@ const Register = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(
@@ -25,7 +23,6 @@ const Register = () => {
 
   const API_URL = 'http://localhost:5000/api';
 
-  // Validation
   const validateForm = () => {
     const newErrors = {};
 
@@ -61,7 +58,6 @@ const Register = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle avatar upload
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -78,7 +74,6 @@ const Register = () => {
     }
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -111,10 +106,7 @@ const Register = () => {
       );
 
       if (response.data.success) {
-        // Show success message
         setSuccess(true);
-        
-        // Clear form fields
         setUsername('');
         setEmail('');
         setPassword('');
@@ -123,10 +115,6 @@ const Register = () => {
         setAvatarPreview('https://api.dicebear.com/7.x/bottts/svg?seed=defaultRegister');
         setAgreeTerms(false);
         
-        // DO NOT save token or user data here!
-        // User must login separately
-        
-        // Auto redirect to login after 3 seconds
         setTimeout(() => {
           navigate('/login');
         }, 3000);
@@ -134,7 +122,6 @@ const Register = () => {
 
     } catch (error) {
       console.error('Registration error:', error);
-      
       if (error.response) {
         setErrors({ 
           submit: error.response.data.message || 'Registration failed' 
@@ -150,202 +137,166 @@ const Register = () => {
   };
 
   return (
-    <div className="web-auth-wrapper">
-      <div className="register-card-container">
-        
-        {/* Left Panel */}
-        <div className="auth-art-panel">
-          <button className="lobby-back-btn" onClick={() => navigate('/login')}>
-            <ArrowLeft size={18} />
-            <span>Back to Login</span>
-          </button>
+    <div className="register-page-bg">
+      {/* Top Left Independent Back Arrow Button */}
+      <button className="top-back-arrow-btn" onClick={() => navigate('/login')}>
+        <ArrowLeft size={24} />
+      </button>
 
-          <div className="doodle-branding">
-            <div className="logo-title">
-              Doodle <span className="highlight-up">Up!</span>
-              <span className="crown-doodle">👑</span>
-            </div>
-            <p className="tagline">Let's get you in!</p>
+      <div className="register-central-wrapper">
+        <form onSubmit={handleSubmit} className="register-form-flow" noValidate>
+          
+          <div className="register-header-section">
+            <h2 className="register-main-title">Create Account</h2>
+            <p className="register-subtitle">Let's get you in!</p>
           </div>
 
-          <div className="avatar-upload-container">
-            <div className="avatar-preview-ring">
-              <div className="avatar-gradient-bg">
-                <img 
-                  src={avatarPreview} 
-                  alt="Avatar Preview" 
-                  className="register-avatar-img"
-                />
-              </div>
-              <label htmlFor="avatar-file" className="avatar-camera-badge">
-                <Camera size={16} />
+          {/* Centered Avatar Display Box */}
+          <div className="centered-avatar-uploader">
+            <div className="avatar-circle-frame">
+              <img 
+                src={avatarPreview} 
+                alt="Avatar Preview" 
+                className="main-avatar-element"
+              />
+              <label htmlFor="avatar-file-input" className="pink-camera-badge">
+                <Camera size={14} />
               </label>
               <input 
                 type="file" 
-                id="avatar-file" 
+                id="avatar-file-input" 
                 accept="image/*"
                 onChange={handleAvatarChange}
                 style={{ display: 'none' }} 
               />
             </div>
-            <span className="upload-label">Choose Avatar</span>
-            {errors.avatar && <span className="error-text">{errors.avatar}</span>}
+            {errors.avatar && <span className="field-error-msg">{errors.avatar}</span>}
           </div>
-        </div>
 
-        {/* Right Panel */}
-        <div className="auth-form-panel">
-          <form onSubmit={handleSubmit} className="actual-form" noValidate>
-            <h2 className="form-desktop-header">Create Account</h2>
+          {/* Global Alert Notification Boxes */}
+          {success && (
+            <div className="register-success-alert">
+              <CheckCircle size={18} />
+              <span>Registration successful! Redirecting to login...</span>
+            </div>
+          )}
 
-            {/* Success Message */}
-            {success && (
-              <div className="success-message-global">
-                <CheckCircle size={20} />
-                <span>Registration successful! Redirecting to login...</span>
+          {errors.submit && (
+            <div className="register-error-alert">{errors.submit}</div>
+          )}
+
+          {/* Form Fields Elements */}
+          <div className="register-input-row">
+            <div className={`wide-pill-input ${errors.username ? 'has-error' : ''}`}>
+              <User size={18} className="input-left-icon" />
+              <input 
+                type="text" 
+                placeholder="Username"
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  if (errors.username) setErrors({ ...errors, username: '' });
+                }}
+                disabled={loading || success}
+                required 
+              />
+            </div>
+            {errors.username && <span className="field-error-msg">{errors.username}</span>}
+          </div>
+
+          <div className="register-input-row">
+            <div className={`wide-pill-input ${errors.email ? 'has-error' : ''}`}>
+              <Mail size={18} className="input-left-icon" />
+              <input 
+                type="email" 
+                placeholder="Email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (errors.email) setErrors({ ...errors, email: '' });
+                }}
+                disabled={loading || success}
+                required 
+              />
+            </div>
+            {errors.email && <span className="field-error-msg">{errors.email}</span>}
+          </div>
+
+          <div className="register-input-row">
+            <div className={`wide-pill-input ${errors.password ? 'has-error' : ''}`}>
+              <Lock size={18} className="input-left-icon" />
+              <input 
+                type="password" 
+                placeholder="Password" 
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (errors.password) setErrors({ ...errors, password: '' });
+                }}
+                disabled={loading || success}
+                required
+              />
+            </div>
+            {errors.password && <span className="field-error-msg">{errors.password}</span>}
+          </div>
+
+          <div className="register-input-row">
+            <div className={`wide-pill-input ${errors.confirmPassword ? 'has-error' : ''}`}>
+              <Lock size={18} className="input-left-icon" />
+              <input 
+                type="password" 
+                placeholder="Confirm Password" 
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' });
+                }}
+                disabled={loading || success}
+                required
+              />
+            </div>
+            {errors.confirmPassword && <span className="field-error-msg">{errors.confirmPassword}</span>}
+          </div>
+
+          {/* Legal Terms Checkbox Row */}
+          <div className="legal-checkbox-container">
+            <label className="flat-checkbox-label">
+              <input 
+                type="checkbox"
+                checked={agreeTerms}
+                onChange={(e) => {
+                  setAgreeTerms(e.target.checked);
+                  if (errors.agreeTerms) setErrors({ ...errors, agreeTerms: '' });
+                }}
+                disabled={loading || success}
+              />
+              <span className="checkbox-text-span">
+                I agree to the <span className="pink-highlight">Terms of Service</span> & <span className="pink-highlight">Privacy Policy</span>
+              </span>
+            </label>
+            {errors.agreeTerms && <span className="field-error-msg blocks-error">{errors.agreeTerms}</span>}
+          </div>
+
+          {/* Action Button */}
+          <button type="submit" className="neon-pink-register-btn" disabled={loading || success}>
+            {loading ? (
+              <div className="btn-loading-align">
+                <Loader size={18} className="spin-effect" />
+                REGISTERING...
               </div>
+            ) : success ? (
+              'REGISTERED!'
+            ) : (
+              'REGISTER'
             )}
+          </button>
 
-            {errors.submit && (
-              <div className="error-message-global">{errors.submit}</div>
-            )}
+          {/* Redirect Footer Link */}
+          <div className="already-account-footer">
+            Already have an account? <span className="pink-login-trigger" onClick={() => navigate('/login')}>Login</span>
+          </div>
 
-            {/* Username */}
-            <div className="input-field-group">
-              <div className={`input-icon-wrapper ${errors.username ? 'has-error' : ''}`}>
-                <User size={20} className="field-icon" />
-                <input 
-                  type="text" 
-                  placeholder="Username"
-                  value={username}
-                  onChange={(e) => {
-                    setUsername(e.target.value);
-                    if (errors.username) setErrors({ ...errors, username: '' });
-                  }}
-                  disabled={loading || success}
-                  required 
-                />
-              </div>
-              {errors.username && <span className="error-text">{errors.username}</span>}
-            </div>
-
-            {/* Email */}
-            <div className="input-field-group">
-              <div className={`input-icon-wrapper ${errors.email ? 'has-error' : ''}`}>
-                <Mail size={20} className="field-icon" />
-                <input 
-                  type="email" 
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (errors.email) setErrors({ ...errors, email: '' });
-                  }}
-                  disabled={loading || success}
-                  required 
-                />
-              </div>
-              {errors.email && <span className="error-text">{errors.email}</span>}
-            </div>
-
-            {/* Password */}
-            <div className="input-field-group">
-              <div className={`input-icon-wrapper ${errors.password ? 'has-error' : ''}`}>
-                <Lock size={20} className="field-icon" />
-                <input 
-                  type={showPassword ? "text" : "password"} 
-                  placeholder="Password" 
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (errors.password) setErrors({ ...errors, password: '' });
-                  }}
-                  disabled={loading || success}
-                  required
-                />
-                <button 
-                  type="button" 
-                  className="toggle-password-btn"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={loading || success}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-              {errors.password && <span className="error-text">{errors.password}</span>}
-            </div>
-
-            {/* Confirm Password */}
-            <div className="input-field-group">
-              <div className={`input-icon-wrapper ${errors.confirmPassword ? 'has-error' : ''}`}>
-                <Lock size={20} className="field-icon" />
-                <input 
-                  type={showConfirmPassword ? "text" : "password"} 
-                  placeholder="Confirm Password" 
-                  value={confirmPassword}
-                  onChange={(e) => {
-                    setConfirmPassword(e.target.value);
-                    if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' });
-                  }}
-                  disabled={loading || success}
-                  required
-                />
-                <button 
-                  type="button" 
-                  className="toggle-password-btn"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  disabled={loading || success}
-                >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-              {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
-            </div>
-
-            {/* Terms */}
-            <div className={`terms-checkbox-row ${errors.agreeTerms ? 'has-error' : ''}`}>
-              <label className="checkbox-custom-container">
-                <input 
-                  type="checkbox"
-                  checked={agreeTerms}
-                  onChange={(e) => {
-                    setAgreeTerms(e.target.checked);
-                    if (errors.agreeTerms) setErrors({ ...errors, agreeTerms: '' });
-                  }}
-                  disabled={loading || success}
-                />
-                <span className="checkmark"></span>
-                <span className="terms-text">
-                  I agree to the <span className="cyan-highlight">Terms of Service</span> & <span className="cyan-highlight">Privacy Policy</span>
-                </span>
-              </label>
-              {errors.agreeTerms && <span className="error-text">{errors.agreeTerms}</span>}
-            </div>
-
-            {/* Submit */}
-            <button type="submit" className="register-submit-btn" disabled={loading || success}>
-              {loading ? (
-                <>
-                  <Loader size={20} className="spinning" />
-                  REGISTERING...
-                </>
-              ) : success ? (
-                <>
-                  <CheckCircle size={20} />
-                  REGISTERED!
-                </>
-              ) : (
-                'REGISTER'
-              )}
-            </button>
-
-            <div className="register-redirect-text">
-              Already have an account? <span className="cyan-link" onClick={() => navigate('/login')}>Login</span>
-            </div>
-
-          </form>
-        </div>
-
+        </form>
       </div>
     </div>
   );

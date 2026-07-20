@@ -89,6 +89,69 @@ const UserSchema = new mongoose.Schema({
 const User = mongoose.model('User', UserSchema);
 
 // ============================================
+// FRIEND SCHEMA
+// ============================================
+const FriendSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  friend: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  status: { 
+    type: String, 
+    enum: ['pending', 'accepted', 'rejected'], 
+    default: 'pending' 
+  },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+const Friend = mongoose.model('Friend', FriendSchema);
+
+// ============================================
+// NOTIFICATION SCHEMA - ADD THIS
+// ============================================
+const NotificationSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  type: { 
+    type: String, 
+    enum: ['friend_request', 'friend_accept', 'room_invite'], 
+    required: true 
+  },
+  message: { type: String, required: true },
+  data: { type: Object, default: {} },
+  isRead: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const Notification = mongoose.model('Notification', NotificationSchema);
+
+// ============================================
+// ROOM SCHEMA
+// ============================================
+const RoomSchema = new mongoose.Schema({
+  roomName: { type: String, required: true, trim: true },
+  roomCode: { type: String, required: true, unique: true },
+  gameMode: { type: String, required: true },
+  maxPlayers: { type: Number, required: true, min: 4, max: 20 },
+  rounds: { type: Number, required: true },
+  roomType: { type: String, enum: ['public', 'private'], default: 'public' },
+  host: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  hostName: { type: String, required: true },
+  status: { type: String, enum: ['waiting', 'playing', 'finished'], default: 'waiting' },
+  players: [{
+    id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    username: { type: String },
+    avatar: { type: String },
+    isHost: { type: Boolean, default: false },
+    isReady: { type: Boolean, default: false },
+    joinedAt: { type: Date, default: Date.now }
+  }],
+  createdAt: { type: Date, default: Date.now },
+  startedAt: { type: Date },
+  finishedAt: { type: Date }
+});
+
+const Room = mongoose.model('Room', RoomSchema);
+
+// ============================================
 // FILE UPLOAD CONFIGURATION
 // ============================================
 const storage = multer.diskStorage({
@@ -119,7 +182,7 @@ const upload = multer({
 });
 
 // ============================================
-// AUTH MIDDLEWARE
+// AUTH MIDDLEWARE - MOVED UP BEFORE ROUTES
 // ============================================
 const authMiddleware = async (req, res, next) => {
   try {
@@ -154,6 +217,14 @@ const authMiddleware = async (req, res, next) => {
 };
 
 // ============================================
+// CREATE UPLOADS FOLDER
+// ============================================
+const fs = require('fs');
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads');
+}
+
+// ============================================
 // API ROUTES
 // ============================================
 
@@ -166,12 +237,15 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// ============================================
+// AUTH ROUTES
+// ============================================
+
 // REGISTER
 app.post('/api/register', upload.single('avatar'), async (req, res) => {
   try {
     const { username, email, password, confirmPassword } = req.body;
 
-    // Validation
     if (!username || !email || !password || !confirmPassword) {
       return res.status(400).json({ 
         success: false, 
@@ -193,7 +267,6 @@ app.post('/api/register', upload.single('avatar'), async (req, res) => {
       });
     }
 
-    // Check existing user
     const existingUser = await User.findOne({ 
       $or: [{ email: email.toLowerCase() }, { username }] 
     });
@@ -213,11 +286,9 @@ app.post('/api/register', upload.single('avatar'), async (req, res) => {
       }
     }
 
-    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create user
     const user = new User({
       username,
       email: email.toLowerCase(),
@@ -227,7 +298,6 @@ app.post('/api/register', upload.single('avatar'), async (req, res) => {
 
     await user.save();
 
-    // Generate JWT
     const token = jwt.sign(
       { userId: user._id, email: user.email },
       process.env.JWT_SECRET || 'your-secret-key',
@@ -284,7 +354,6 @@ app.post('/api/login', async (req, res) => {
       });
     }
 
-    // Update online status
     user.isOnline = true;
     user.lastSeen = new Date();
     await user.save();
@@ -318,7 +387,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// GET USER PROFILE (Protected)
+// GET USER PROFILE
 app.get('/api/profile', authMiddleware, async (req, res) => {
   try {
     res.json({
@@ -329,6 +398,91 @@ app.get('/api/profile', authMiddleware, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error'
+    });
+  }
+});
+
+// Update Profile
+app.put('/api/profile/update', authMiddleware, upload.single('avatar'), async (req, res) => {
+  try {
+    const { username, email, currentPassword, newPassword } = req.body;
+    const userId = req.userId;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (username && username !== user.username) {
+      const existingUser = await User.findOne({ username });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username already taken'
+        });
+      }
+      user.username = username;
+    }
+
+    if (email && email !== user.email) {
+      const existingUser = await User.findOne({ email: email.toLowerCase() });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email already registered'
+        });
+      }
+      user.email = email.toLowerCase();
+    }
+
+    if (req.file) {
+      user.avatar = `/uploads/${req.file.filename}`;
+    }
+
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'Current password is required to change password'
+        });
+      }
+
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch) {
+        return res.status(400).json({
+          success: false,
+          message: 'Current password is incorrect'
+        });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'New password must be at least 6 characters'
+        });
+      }
+
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(newPassword, salt);
+    }
+
+    await user.save();
+
+    const updatedUser = await User.findById(userId).select('-password');
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: updatedUser
+    });
+
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update profile'
     });
   }
 });
@@ -350,61 +504,457 @@ app.post('/api/logout', authMiddleware, async (req, res) => {
 });
 
 // ============================================
-// CREATE UPLOADS FOLDER
+// GAME STATS ROUTES
 // ============================================
-const fs = require('fs');
-if (!fs.existsSync('uploads')) {
-  fs.mkdirSync('uploads');
-}
 
-// ============================================
-// START SERVER
-// ============================================
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📍 http://localhost:${PORT}`);
-  console.log(`📡 WebSocket server ready`);
-});
+// Update Game Stats
+app.post('/api/game/stats', authMiddleware, async (req, res) => {
+  try {
+    const { gamesPlayed, gamesWon } = req.body;
+    const userId = req.userId;
 
-// Handle graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received. Shutting down gracefully...');
-  server.close(() => {
-    mongoose.connection.close(false, () => {
-      console.log('MongoDB connection closed.');
-      process.exit(0);
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (gamesPlayed !== undefined) {
+      user.gamesPlayed = (user.gamesPlayed || 0) + gamesPlayed;
+    }
+    if (gamesWon !== undefined) {
+      user.gamesWon = (user.gamesWon || 0) + gamesWon;
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Stats updated successfully',
+      user: {
+        gamesPlayed: user.gamesPlayed,
+        gamesWon: user.gamesWon
+      }
     });
-  });
+  } catch (error) {
+    console.error('Update stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update stats'
+    });
+  }
+});
+
+// Get Game Stats
+app.get('/api/game/stats', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      stats: {
+        gamesPlayed: user.gamesPlayed || 0,
+        gamesWon: user.gamesWon || 0
+      }
+    });
+  } catch (error) {
+    console.error('Get stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get stats'
+    });
+  }
 });
 
 // ============================================
-// ROOM SCHEMA
+// FRIEND ROUTES
 // ============================================
-const RoomSchema = new mongoose.Schema({
-  roomName: { type: String, required: true, trim: true },
-  roomCode: { type: String, required: true, unique: true },
-  gameMode: { type: String, required: true },
-  maxPlayers: { type: Number, required: true, min: 4, max: 20 },
-  rounds: { type: Number, required: true },
-  roomType: { type: String, enum: ['public', 'private'], default: 'public' },
-  host: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  hostName: { type: String, required: true },
-  status: { type: String, enum: ['waiting', 'playing', 'finished'], default: 'waiting' },
-  players: [{
-    id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    username: { type: String },
-    avatar: { type: String },
-    isHost: { type: Boolean, default: false },
-    isReady: { type: Boolean, default: false },
-    joinedAt: { type: Date, default: Date.now }
-  }],
-  createdAt: { type: Date, default: Date.now },
-  startedAt: { type: Date },
-  finishedAt: { type: Date }
+
+// Get Friends List
+app.get('/api/friends', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    const friends = await Friend.find({
+      $or: [{ user: userId }, { friend: userId }],
+      status: 'accepted'
+    })
+    .populate('user', 'username avatar isOnline')
+    .populate('friend', 'username avatar isOnline');
+
+    const friendList = friends.map(f => {
+      const friendData = f.user._id.toString() === userId ? f.friend : f.user;
+      return {
+        _id: friendData._id,
+        username: friendData.username,
+        avatar: friendData.avatar,
+        isOnline: friendData.isOnline || false
+      };
+    });
+
+    const incomingRequests = await Friend.find({
+      friend: userId,
+      status: 'pending'
+    }).populate('user', 'username avatar');
+
+    const outgoingRequests = await Friend.find({
+      user: userId,
+      status: 'pending'
+    }).populate('friend', 'username avatar');
+
+    res.json({
+      success: true,
+      friends: friendList,
+      incomingRequests: incomingRequests.map(r => ({
+        id: r._id,
+        user: r.user,
+        createdAt: r.createdAt
+      })),
+      outgoingRequests: outgoingRequests.map(r => ({
+        id: r._id,
+        user: r.friend,
+        createdAt: r.createdAt
+      }))
+    });
+  } catch (error) {
+    console.error('Get friends error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get friends' });
+  }
 });
 
-const Room = mongoose.model('Room', RoomSchema);
+// Get User Suggestions
+app.get('/api/users/suggestions', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    const allUsers = await User.find({ _id: { $ne: userId } })
+      .select('username avatar isOnline')
+      .limit(20);
+
+    const existingFriends = await Friend.find({
+      $or: [{ user: userId }, { friend: userId }]
+    });
+
+    const excludedIds = new Set();
+    excludedIds.add(userId);
+    existingFriends.forEach(f => {
+      excludedIds.add(f.user.toString());
+      excludedIds.add(f.friend.toString());
+    });
+
+    const suggestions = allUsers.filter(u => !excludedIds.has(u._id.toString()));
+
+    res.json({
+      success: true,
+      users: suggestions
+    });
+  } catch (error) {
+    console.error('Get suggestions error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get suggestions' });
+  }
+});
+
+// Search Users
+app.get('/api/users/search', authMiddleware, async (req, res) => {
+  try {
+    const { q } = req.query;
+    const userId = req.userId;
+
+    if (!q || q.length < 1) {
+      return res.json({ success: true, users: [] });
+    }
+
+    const users = await User.find({
+      _id: { $ne: userId },
+      username: { $regex: q, $options: 'i' }
+    })
+    .select('username avatar isOnline')
+    .limit(10);
+
+    res.json({
+      success: true,
+      users: users
+    });
+  } catch (error) {
+    console.error('Search users error:', error);
+    res.status(500).json({ success: false, message: 'Failed to search users' });
+  }
+});
+
+// Send Friend Request
+app.post('/api/friends/request/:userId', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const friendId = req.params.userId;
+
+    if (userId === friendId) {
+      return res.status(400).json({ success: false, message: 'Cannot add yourself' });
+    }
+
+    const existingRequest = await Friend.findOne({
+      $or: [
+        { user: userId, friend: friendId },
+        { user: friendId, friend: userId }
+      ]
+    });
+
+    if (existingRequest) {
+      return res.status(400).json({ success: false, message: 'Request already exists' });
+    }
+
+    const friendRequest = new Friend({
+      user: userId,
+      friend: friendId,
+      status: 'pending'
+    });
+
+    await friendRequest.save();
+
+    const sender = await User.findById(userId);
+    const notification = new Notification({
+      user: friendId,
+      type: 'friend_request',
+      message: `${sender.username} sent you a friend request`,
+      data: { requestId: friendRequest._id, userId: userId }
+    });
+    await notification.save();
+
+    io.to(friendId).emit('notification', notification);
+
+    res.json({
+      success: true,
+      message: 'Friend request sent'
+    });
+  } catch (error) {
+    console.error('Send friend request error:', error);
+    res.status(500).json({ success: false, message: 'Failed to send friend request' });
+  }
+});
+
+// Accept Friend Request
+app.post('/api/friends/accept/:requestId', authMiddleware, async (req, res) => {
+  try {
+    const requestId = req.params.requestId;
+    const userId = req.userId;
+
+    const request = await Friend.findById(requestId);
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+
+    if (request.friend.toString() !== userId) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    request.status = 'accepted';
+    await request.save();
+
+    const receiver = await User.findById(userId);
+    const notification = new Notification({
+      user: request.user,
+      type: 'friend_accept',
+      message: `${receiver.username} accepted your friend request`,
+      data: { friendId: userId }
+    });
+    await notification.save();
+
+    io.to(request.user.toString()).emit('notification', notification);
+
+    res.json({
+      success: true,
+      message: 'Friend request accepted'
+    });
+  } catch (error) {
+    console.error('Accept friend request error:', error);
+    res.status(500).json({ success: false, message: 'Failed to accept request' });
+  }
+});
+
+// Reject Friend Request
+app.post('/api/friends/reject/:requestId', authMiddleware, async (req, res) => {
+  try {
+    const requestId = req.params.requestId;
+    const userId = req.userId;
+
+    const request = await Friend.findById(requestId);
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+
+    if (request.friend.toString() !== userId) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    await Friend.findByIdAndDelete(requestId);
+
+    res.json({
+      success: true,
+      message: 'Friend request rejected'
+    });
+  } catch (error) {
+    console.error('Reject friend request error:', error);
+    res.status(500).json({ success: false, message: 'Failed to reject request' });
+  }
+});
+
+// Cancel Friend Request
+app.delete('/api/friends/request/:requestId', authMiddleware, async (req, res) => {
+  try {
+    const requestId = req.params.requestId;
+    const userId = req.userId;
+
+    const request = await Friend.findById(requestId);
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+
+    if (request.user.toString() !== userId) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    await Friend.findByIdAndDelete(requestId);
+
+    res.json({
+      success: true,
+      message: 'Friend request cancelled'
+    });
+  } catch (error) {
+    console.error('Cancel friend request error:', error);
+    res.status(500).json({ success: false, message: 'Failed to cancel request' });
+  }
+});
+
+// Check if friend request exists
+app.get('/api/friends/request/:requestId', authMiddleware, async (req, res) => {
+  try {
+    const requestId = req.params.requestId;
+    const request = await Friend.findById(requestId);
+    
+    res.json({
+      success: true,
+      exists: !!request,
+      status: request?.status || null
+    });
+  } catch (error) {
+    console.error('Check friend request error:', error);
+    res.json({
+      success: true,
+      exists: false
+    });
+  }
+});
+
+// ============================================
+// NOTIFICATION ROUTES
+// ============================================
+
+// Get Notifications
+app.get('/api/notifications', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    const notifications = await Notification.find({ user: userId })
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    res.json({
+      success: true,
+      notifications
+    });
+  } catch (error) {
+    console.error('Get notifications error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get notifications' });
+  }
+});
+
+// Mark Notification as Read
+app.post('/api/notifications/:id/read', authMiddleware, async (req, res) => {
+  try {
+    const notificationId = req.params.id;
+    const userId = req.userId;
+
+    const notification = await Notification.findOne({ _id: notificationId, user: userId });
+    if (!notification) {
+      return res.status(404).json({ success: false, message: 'Notification not found' });
+    }
+
+    notification.isRead = true;
+    await notification.save();
+
+    // Also delete if it's a friend request that was already handled
+    if (notification.type === 'friend_request' && notification.data?.requestId) {
+      const request = await Friend.findById(notification.data.requestId);
+      if (!request) {
+        await Notification.findByIdAndDelete(notificationId);
+        return res.json({
+          success: true,
+          message: 'Notification removed'
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Notification marked as read'
+    });
+  } catch (error) {
+    console.error('Mark notification read error:', error);
+    res.status(500).json({ success: false, message: 'Failed to mark notification as read' });
+  }
+});
+
+// Delete Notification
+app.delete('/api/notifications/:id', authMiddleware, async (req, res) => {
+  try {
+    const notificationId = req.params.id;
+    const userId = req.userId;
+
+    const notification = await Notification.findOne({ _id: notificationId, user: userId });
+    if (!notification) {
+      return res.status(404).json({ success: false, message: 'Notification not found' });
+    }
+
+    await Notification.findByIdAndDelete(notificationId);
+
+    res.json({
+      success: true,
+      message: 'Notification deleted'
+    });
+  } catch (error) {
+    console.error('Delete notification error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete notification' });
+  }
+});
+
+// Mark All Notifications as Read
+app.post('/api/notifications/read-all', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    await Notification.updateMany(
+      { user: userId, isRead: false },
+      { isRead: true }
+    );
+
+    res.json({
+      success: true,
+      message: 'All notifications marked as read'
+    });
+  } catch (error) {
+    console.error('Mark all notifications read error:', error);
+    res.status(500).json({ success: false, message: 'Failed to mark all notifications as read' });
+  }
+});
 
 // ============================================
 // ROOM ROUTES
@@ -417,7 +967,6 @@ app.post('/api/rooms/create', authMiddleware, async (req, res) => {
     const userId = req.userId;
     const user = req.user;
 
-    // Validation
     if (!roomName || roomName.length < 3) {
       return res.status(400).json({
         success: false,
@@ -432,7 +981,6 @@ app.post('/api/rooms/create', authMiddleware, async (req, res) => {
       });
     }
 
-    // Generate unique room code
     const generateRoomCode = () => {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
       let code = '';
@@ -461,7 +1009,6 @@ app.post('/api/rooms/create', authMiddleware, async (req, res) => {
       });
     }
 
-    // Create room
     const room = new Room({
       roomName: roomName.trim(),
       roomCode,
@@ -483,7 +1030,6 @@ app.post('/api/rooms/create', authMiddleware, async (req, res) => {
 
     await room.save();
 
-    // Populate player data
     const populatedRoom = await Room.findById(room._id)
       .populate('players.id', 'username avatar');
 
@@ -538,17 +1084,16 @@ app.get('/api/rooms', authMiddleware, async (req, res) => {
     .limit(50);
 
     const formattedRooms = rooms.map(room => ({
-      id: room._id,
-      roomId: room._id,
+      _id: room._id,
       roomName: room.roomName,
       roomCode: room.roomCode,
       gameMode: room.gameMode,
       maxPlayers: room.maxPlayers,
-      currentPlayers: room.players.length,
-      roomType: room.roomType,
-      host: room.host,
       players: room.players,
+      host: room.host,
+      hostName: room.hostName,
       status: room.status,
+      rounds: room.rounds,
       createdAt: room.createdAt
     }));
 
@@ -621,7 +1166,6 @@ app.post('/api/rooms/:roomId/join', authMiddleware, async (req, res) => {
       });
     }
 
-    // Check if room is full
     if (room.players.length >= room.maxPlayers) {
       return res.status(400).json({
         success: false,
@@ -629,7 +1173,6 @@ app.post('/api/rooms/:roomId/join', authMiddleware, async (req, res) => {
       });
     }
 
-    // Check if room is still waiting
     if (room.status !== 'waiting') {
       return res.status(400).json({
         success: false,
@@ -637,7 +1180,6 @@ app.post('/api/rooms/:roomId/join', authMiddleware, async (req, res) => {
       });
     }
 
-    // Check if user already in room
     if (room.players.some(p => p.id.toString() === userId)) {
       return res.status(400).json({
         success: false,
@@ -645,7 +1187,6 @@ app.post('/api/rooms/:roomId/join', authMiddleware, async (req, res) => {
       });
     }
 
-    // Add player to room
     room.players.push({
       id: userId,
       username: user.username,
@@ -688,10 +1229,8 @@ app.post('/api/rooms/:roomId/leave', authMiddleware, async (req, res) => {
       });
     }
 
-    // Remove player from room
     room.players = room.players.filter(p => p.id.toString() !== userId);
     
-    // If host leaves, assign new host or delete room
     if (room.host.toString() === userId) {
       if (room.players.length > 0) {
         room.host = room.players[0].id;
@@ -721,42 +1260,148 @@ app.post('/api/rooms/:roomId/leave', authMiddleware, async (req, res) => {
   }
 });
 
-// Get All Rooms
-app.get('/api/rooms', authMiddleware, async (req, res) => {
+// Start Game
+app.post('/api/rooms/:roomId/start', authMiddleware, async (req, res) => {
   try {
-    const rooms = await Room.find({ 
-      status: 'waiting',
-      roomType: 'public'
-    })
-    .populate('host', 'username avatar')
-    .populate('players.id', 'username avatar')
-    .sort({ createdAt: -1 })
-    .limit(50);
+    const { roomId } = req.params;
+    const userId = req.userId;
 
-    const formattedRooms = rooms.map(room => ({
-      _id: room._id,
-      roomName: room.roomName,
-      roomCode: room.roomCode,
-      gameMode: room.gameMode,
-      maxPlayers: room.maxPlayers,
-      players: room.players,
-      host: room.host,
-      hostName: room.hostName,
-      status: room.status,
-      rounds: room.rounds,
-      createdAt: room.createdAt
-    }));
+    const room = await Room.findById(roomId);
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+
+    if (room.host.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the host can start the game'
+      });
+    }
+
+    if (room.players.length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Need at least 2 players to start'
+      });
+    }
+
+    const allReady = room.players.every(p => p.isReady === true);
+    if (!allReady) {
+      return res.status(400).json({
+        success: false,
+        message: 'Not all players are ready'
+      });
+    }
+
+    room.status = 'playing';
+    room.startedAt = new Date();
+    await room.save();
 
     res.json({
       success: true,
-      rooms: formattedRooms
+      message: 'Game started successfully',
+      room: room
     });
 
   } catch (error) {
-    console.error('Get rooms error:', error);
+    console.error('Start game error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch rooms'
+      message: 'Failed to start game'
     });
   }
+});
+
+// Invite Friend to Room
+app.post('/api/rooms/:roomId/invite/:friendId', authMiddleware, async (req, res) => {
+  try {
+    const { roomId, friendId } = req.params;
+    const userId = req.userId;
+
+    const room = await Room.findById(roomId);
+    if (!room) {
+      return res.status(404).json({ success: false, message: 'Room not found' });
+    }
+
+    if (room.host.toString() !== userId) {
+      return res.status(403).json({ success: false, message: 'Only the host can invite' });
+    }
+
+    const friend = await User.findById(friendId);
+    if (!friend) {
+      return res.status(404).json({ success: false, message: 'Friend not found' });
+    }
+
+    const notification = new Notification({
+      user: friendId,
+      type: 'room_invite',
+      message: `${req.user.username} invited you to join room: ${room.roomName}`,
+      data: { roomId: roomId, roomName: room.roomName, inviter: userId }
+    });
+    await notification.save();
+
+    io.to(friendId).emit('notification', notification);
+
+    res.json({
+      success: true,
+      message: 'Invitation sent'
+    });
+  } catch (error) {
+    console.error('Invite friend error:', error);
+    res.status(500).json({ success: false, message: 'Failed to send invitation' });
+  }
+});
+
+// ============================================
+// SOCKET.IO CONNECTION HANDLING
+// ============================================
+io.on('connection', (socket) => {
+  console.log('🟢 Client connected:', socket.id);
+
+  socket.on('userOnline', async (userId) => {
+    try {
+      await User.findByIdAndUpdate(userId, { isOnline: true });
+      socket.userId = userId;
+      socket.join(`user_${userId}`);
+      socket.broadcast.emit('friend-online', userId);
+    } catch (error) {
+      console.error('User online error:', error);
+    }
+  });
+
+  socket.on('disconnect', async () => {
+    console.log('🔴 Client disconnected:', socket.id);
+    if (socket.userId) {
+      try {
+        await User.findByIdAndUpdate(socket.userId, { isOnline: false });
+        socket.broadcast.emit('friend-offline', socket.userId);
+      } catch (error) {
+        console.error('User offline error:', error);
+      }
+    }
+  });
+});
+
+// ============================================
+// START SERVER
+// ============================================
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📍 http://localhost:${PORT}`);
+  console.log(`📡 WebSocket server ready`);
+});
+
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Shutting down gracefully...');
+  server.close(() => {
+    mongoose.connection.close(false, () => {
+      console.log('MongoDB connection closed.');
+      process.exit(0);
+    });
+  });
 });

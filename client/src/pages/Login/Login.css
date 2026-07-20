@@ -1,453 +1,288 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+
 :root {
-  --bg-dark: #0b071e;
-  --bg-card: #150f31;
-  --bg-field: #1b133e;
-  --text-main: #ffffff;
-  --text-muted: #8b85b4;
-  --accent-pink: #f72585;
-  --accent-teal: #00f5d4;
-  --accent-gold: #ffbd00;
+  --app-bg-gradient: radial-gradient(circle at 80% 20%, #111032 0%, #070614 100%);
+  --card-bg-color: #11152d;
+  --field-bg-color: #1a1e3b;
+  --border-field: rgba(255, 255, 255, 0.08);
+  --text-primary: #ffffff;
+  --text-secondary: #7b83a2;
+  --neon-pink: #ff2c77;
 }
 
-.web-auth-wrapper {
+.doodle-page-bg {
   min-height: 100vh;
-  background-color: var(--bg-dark);
+  background: var(--app-bg-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem;
   box-sizing: border-box;
+  font-family: 'Fredoka', system-ui, sans-serif; /* Applied a rounded friendly font family to replicate screenshot */
 }
 
-/* Transformed into responsive widescreen desktop dashboard layout split */
-.login-card-container {
+/* Outer layout grid directly on background canvas */
+.doodle-main-layout {
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   width: 100%;
-  max-width: 1000px;
-  background-color: var(--bg-card);
-  border-radius: 28px;
-  overflow: hidden;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  max-width: 1080px;
+  align-items: center;
+  gap: 6rem;
 }
 
-/* Left Brand Panel Styles */
-.auth-art-panel {
-  background: linear-gradient(145deg, #100a30 0%, #070416 100%);
-  padding: 3.5rem 3rem;
+/* Left Free Floating Elements */
+.doodle-left-content {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  position: relative;
-  border-right: 1px solid rgba(255, 255, 255, 0.02);
+  gap: 3rem;
 }
 
-.doodle-branding {
-  text-align: center;
-  z-index: 2;
-}
-
-.logo-title {
-  font-size: 2.8rem;
-  font-weight: 900;
-  color: var(--text-main);
-  position: relative;
-  display: inline-block;
-}
-
-.highlight-up {
-  color: var(--accent-pink);
-}
-
-.crown-doodle {
-  position: absolute;
-  top: -26px;
-  left: 42%;
-  transform: rotate(-10deg);
-  font-size: 1.5rem;
-}
-
-.tagline {
-  color: var(--text-muted);
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0.5rem 0 0 0;
-  letter-spacing: 0.5px;
-}
-
-/* Graphic CSS Artwork Engine Layout */
-.main-illustration-box {
-  position: relative;
-  margin: 3rem 0;
-  width: 200px;
-  height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.notebook-art {
-  background: #ffffff;
-  width: 140px;
-  height: 180px;
-  border-radius: 12px;
-  position: relative;
-  transform: rotate(-6deg);
-  box-shadow: 8px 12px 0px rgba(0, 0, 0, 0.2);
-  z-index: 3;
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-}
-
-.notebook-spine {
-  position: absolute;
-  top: -10px;
-  left: 15px;
-  display: flex;
-  gap: 10px;
-}
-
-.notebook-spine span {
-  width: 8px;
-  height: 16px;
-  background: #cccccc;
-  border-radius: 4px;
-  border: 2px solid #555555;
-}
-
-.notebook-page {
-  flex: 1;
-  border: 2px solid #eee;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.kitty-doodle {
-  font-size: 3rem;
-}
-
-.splash-bg {
-  position: absolute;
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  filter: blur(20px);
-  opacity: 0.4;
-  z-index: 1;
-}
-
-.pink-splash {
-  background-color: var(--accent-pink);
-  bottom: 10px;
-  left: -20px;
-}
-
-.teal-splash {
-  background-color: var(--accent-teal);
-  top: 10px;
-  right: -20px;
-}
-
-/* Right Interactive Form Panel Styles */
-.auth-form-panel {
-  padding: 4rem 3.5rem;
-  display: flex;
-  align-items: center;
-}
-
-.actual-form {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-/* Form header - FIXED: white color for dark theme */
-.form-desktop-header {
-  font-size: 28px;
+.doodle-logo {
+  font-size: 4rem;
   font-weight: 700;
-  margin-bottom: 25px;
-  color: var(--text-main);
-  text-align: center;
+  color: var(--text-primary);
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  letter-spacing: -1px;
 }
 
-.input-icon-wrapper {
+.pink-text {
+  color: var(--neon-pink);
+}
+
+.crown-emoji {
+  position: absolute;
+  top: -24px;
+  right: -2px;
+  font-size: 1.6rem;
+  transform: rotate(12deg);
+}
+
+.doodle-tagline {
+  color: var(--text-secondary);
+  font-size: 1.25rem;
+  font-weight: 400;
+  margin: 0.5rem 0 0 0;
+}
+
+.doodle-description {
+  color: #4b5275;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-top: 1.5rem;
+  max-width: 420px;
+  font-family: system-ui, sans-serif; /* Keeping plain text clean */
+}
+
+/* The Left Box Holding Mascot */
+.mascot-box-container {
+  position: relative;
+  width: 240px;
+  height: 240px;
+}
+
+.mascot-inner-card {
+  background-color: #1a1e3b;
+  width: 100%;
+  height: 100%;
+  border-radius: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cat-mascot-image {
+  width: 45%;
+  height: auto;
+  object-fit: contain;
+}
+
+.diagonal-pencil {
+  position: absolute;
+  bottom: -8px;
+  right: -8px;
+  font-size: 2rem;
+  transform: rotate(-15deg);
+}
+
+/* Right Standalone Card Panel */
+.doodle-right-card {
+  background-color: var(--card-bg-color);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 28px;
+  padding: 4rem 3.5rem;
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: 0 4px 40px rgba(0, 0, 0, 0.4);
+}
+
+.auth-form-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.auth-title-group {
+  margin-bottom: 0.5rem;
+}
+
+.welcome-back-title {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.5px;
+}
+
+.signin-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+
+/* Pill Form Inputs Layout */
+.pill-input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
 }
 
-.field-icon {
+.input-icon-left {
   position: absolute;
-  left: 1.25rem;
-  color: var(--text-muted);
+  left: 1.5rem;
+  color: var(--text-secondary);
   pointer-events: none;
 }
 
-.input-icon-wrapper input {
+.pill-input-wrapper input {
   width: 100%;
-  background-color: var(--bg-field);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  padding: 1.1rem 1.25rem 1.1rem 3.25rem;
-  border-radius: 16px;
-  color: var(--text-main);
-  font-size: 1.05rem;
+  background-color: var(--field-bg-color);
+  border: 1px solid var(--border-field);
+  padding: 1.2rem 1.5rem 1.2rem 3.5rem;
+  border-radius: 50px; /* Perfect pill style */
+  color: var(--text-primary);
+  font-size: 1rem;
   outline: none;
+  font-family: system-ui, sans-serif;
   transition: all 0.2s ease;
 }
 
-/* FIXED: Focus color changed from pink to teal for better theme consistency */
-.input-icon-wrapper input:focus {
-  border-color: var(--accent-teal);
-  background-color: rgba(27, 19, 62, 0.5);
-  box-shadow: 0 0 0 3px rgba(0, 245, 212, 0.15);
+.pill-input-wrapper input::placeholder {
+  color: #4b5478;
 }
 
-/* Error state for input wrapper */
-.input-icon-wrapper.has-error input {
-  border-color: #ff6b6b;
-  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.15);
+.pill-input-wrapper input:focus {
+  border-color: rgba(255, 44, 119, 0.3);
 }
 
-/* Forgot password row - FIXED: merged both definitions, proper alignment */
-.forgot-password-row {
+/* Alignment Row */
+.form-actions-row {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: -5px 0 0 0;
+  justify-content: flex-end;
+  margin-top: -0.25rem;
 }
 
-/* FIXED: Forgot link uses teal accent, consistent with theme */
-.forgot-link {
-  color: var(--accent-teal);
+.pink-forgot-link {
+  color: var(--neon-pink);
   text-decoration: none;
-  font-size: 0.95rem;
-  font-weight: 600;
-  transition: opacity 0.2s;
-}
-
-.forgot-link:hover {
-  opacity: 0.8;
-  text-decoration: underline;
-}
-
-.login-submit-btn {
-  background-color: var(--accent-pink);
-  color: var(--text-main);
-  border: none;
-  border-radius: 16px;
-  padding: 1.2rem;
-  font-size: 1.1rem;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  margin-top: 0.5rem;
-  transition: opacity 0.2s, transform 0.1s;
-  box-shadow: 0 8px 24px rgba(247, 37, 133, 0.25);
-}
-
-.login-submit-btn:hover {
-  opacity: 0.95;
-}
-
-.login-submit-btn:active {
-  transform: scale(0.99);
-}
-
-/* Disabled button state */
-.login-submit-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none !important;
-}
-
-/* Horizontal Decorative Text Divider Row */
-.divider-row {
-  display: flex;
-  align-items: center;
-  text-align: center;
-  color: var(--text-muted);
   font-size: 0.85rem;
   font-weight: 600;
-  margin: 1rem 0;
+  font-family: system-ui, sans-serif;
 }
 
-.divider-row::before, .divider-row::after {
-  content: '';
-  flex: 1;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.divider-row span {
-  padding: 0 1rem;
-}
-
-/* Social Grid Row Layout UI specs */
-.social-grid-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 1rem;
-}
-
-.social-oauth-btn {
-  background-color: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 0.9rem;
+/* Login Button with Solid Neon Glow Shadow */
+.neon-login-btn {
+  background-color: var(--neon-pink);
+  color: var(--text-primary);
+  border: none;
+  border-radius: 50px;
+  padding: 1.2rem;
+  font-size: 1.1rem;
+  font-weight: 700;
   cursor: pointer;
+  letter-spacing: 0.5px;
+  margin-top: 0.5rem;
+  transition: transform 0.1s, box-shadow 0.2s;
+  box-shadow: 0 12px 35px rgba(255, 44, 119, 0.45); /* Intense drop glow matching reference */
+}
+
+.neon-login-btn:hover {
+  box-shadow: 0 14px 40px rgba(255, 44, 119, 0.6);
+}
+
+.neon-login-btn:active {
+  transform: scale(0.98);
+}
+
+.neon-login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.loading-inside-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  gap: 8px;
 }
 
-.social-oauth-btn:hover {
-  background-color: var(--bg-field);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-/* Social buttons disabled state */
-.social-oauth-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Redirection Footer Row Text Link - FIXED: .cyan-link to match JSX */
-.register-redirect-text {
+/* Form Redirect Footer */
+.signup-footer-text {
   text-align: center;
-  color: var(--text-muted);
-  font-size: 0.95rem;
-  margin-top: 1.5rem;
-  font-weight: 500;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  font-family: system-ui, sans-serif;
 }
 
-.cyan-link, .teal-link {
-  color: var(--accent-teal);
-  text-decoration: none;
-  font-weight: 700;
+.pink-register-link {
+  color: var(--neon-pink);
+  font-weight: 600;
   cursor: pointer;
 }
 
-.cyan-link:hover, .teal-link:hover {
+.pink-register-link:hover {
   text-decoration: underline;
 }
 
-/* Error message - FIXED: better contrast for dark theme */
-.error-message-global {
-  background: rgba(255, 107, 107, 0.08);
-  border: 1px solid rgba(255, 107, 107, 0.4);
-  color: #ff8a8a;
-  padding: 12px 16px;
-  border-radius: 12px;
-  margin-bottom: 15px;
+.error-banner {
+  background: rgba(255, 44, 119, 0.1);
+  border: 1px solid var(--neon-pink);
+  color: var(--neon-pink);
+  padding: 12px;
+  border-radius: 16px;
+  font-size: 0.9rem;
   text-align: center;
-  font-size: 14px;
-  font-weight: 500;
 }
 
-/* Remember Me checkbox - FIXED: proper dark theme colors */
-.remember-me-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--text-muted);
-}
-
-.remember-me-checkbox input {
-  display: none;
-}
-
-.remember-me-checkbox .checkmark {
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  display: inline-block;
-  position: relative;
-  flex-shrink: 0;
-  transition: all 0.2s;
-}
-
-.remember-me-checkbox input:checked + .checkmark {
-  background: var(--accent-teal);
-  border-color: var(--accent-teal);
-}
-
-.remember-me-checkbox input:checked + .checkmark::after {
-  content: '✓';
-  color: var(--bg-dark);
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-/* FIXED: remember text uses theme variable */
-.remember-text {
-  color: var(--text-muted);
-}
-
-/* Spinning animation for loader */
-.spinning {
+.spin-animate {
   animation: spin 1s linear infinite;
-  margin-right: 8px;
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-/* Password toggle button - FIXED: theme color */
-.toggle-password-btn {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  transition: color 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.toggle-password-btn:hover {
-  color: var(--text-main);
-}
-
-.toggle-password-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Responsive Adaptive Rules for smaller viewports */
-@media (max-width: 850px) {
-  .login-card-container {
+/* Responsive configurations */
+@media (max-width: 900px) {
+  .doodle-main-layout {
     grid-template-columns: 1fr;
-    max-width: 480px;
+    gap: 3rem;
+    max-width: 460px;
   }
-  .auth-art-panel {
-    padding: 3rem 2rem 1.5rem 2rem;
-    border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  .doodle-left-content {
+    align-items: center;
+    text-align: center;
   }
-  .main-illustration-box {
-    display: none; /* Hide illustrative elements on dense screens */
+  .doodle-description, .mascot-box-container {
+    display: none;
   }
-  .auth-form-panel {
-    padding: 2.5rem 2rem;
+  .doodle-logo {
+    font-size: 3rem;
   }
 }

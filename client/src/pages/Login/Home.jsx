@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, Users, History, User, Bell, Settings, Crown, LogOut, Plus, Gamepad2, RefreshCw } from 'lucide-react';
+import { Home, Users, History, User, Bell, Settings, Crown, LogOut, RefreshCw } from 'lucide-react';
 import axios from 'axios';
+import { connectSocket, getSocket, disconnectSocket } from '../../socket';
 import './Home.css';
 
 const Dashboard = () => {
@@ -11,25 +12,24 @@ const Dashboard = () => {
   const [rooms, setRooms] = useState([]);
   const [activeTab, setActiveTab] = useState('lobby');
   const [refreshing, setRefreshing] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const isMounted = useRef(true);
 
   const API_URL = 'http://localhost:5000/api';
 
-  // Get emoji based on game mode
   const getRoomEmoji = useCallback((gameMode) => {
     const emojis = {
       'normal': '🎨',
       'speed': '⚡',
       'dare': '😈',
       'trivia': '🧠',
-      'Draw & Guess': '🎨',
-      'Truth or Dare': '😈',
-      'AI Challenge': '🤖'
+      'draw & guess': '🎨',
+      'truth or dare': '😈',
+      'ai challenge': '🤖'
     };
     return emojis[gameMode?.toLowerCase()] || '🎮';
   }, []);
 
-  // Fetch user data
   const fetchUserData = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
@@ -40,7 +40,7 @@ const Dashboard = () => {
 
       const storedUser = localStorage.getItem('user');
       let userData = null;
-      
+
       if (storedUser) {
         userData = JSON.parse(storedUser);
         setUser(userData);
@@ -48,9 +48,7 @@ const Dashboard = () => {
 
       try {
         const response = await axios.get(`${API_URL}/profile`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
 
         if (response.data.success) {
@@ -74,25 +72,20 @@ const Dashboard = () => {
     }
   }, [API_URL, navigate]);
 
-  // Fetch rooms from BACKEND
   const fetchRooms = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) return [];
 
-      // Try to fetch from backend API
       const response = await axios.get(`${API_URL}/rooms`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.data.success && response.data.rooms) {
-        // Format rooms from backend
         const formattedRooms = response.data.rooms.map(room => {
           const playerCount = room.players?.length || 1;
           const maxPlayers = room.maxPlayers || 10;
-          
+
           return {
             id: room._id || room.id,
             roomId: room._id || room.id,
@@ -110,89 +103,36 @@ const Dashboard = () => {
             playersList: room.players || []
           };
         });
-        
+
         setRooms(formattedRooms);
-        console.log('✅ Rooms fetched from backend:', formattedRooms.length);
-      } else {
-        // If backend returns no rooms, try localStorage as fallback
-        const localRooms = JSON.parse(localStorage.getItem('rooms') || '[]');
-        if (localRooms.length > 0) {
-          const formattedLocalRooms = localRooms.map(room => {
-            const playerCount = room.players?.length || 1;
-            const maxPlayers = room.maxPlayers || 10;
-            
-            return {
-              id: room.id || room.roomId,
-              roomId: room.roomId || room.id,
-              name: room.roomName || room.name || 'Game Room',
-              roomCode: room.roomCode || 'XXXXXX',
-              emoji: getRoomEmoji(room.gameMode),
-              round: `0 / ${room.rounds || 5}`,
-              players: `${playerCount} / ${maxPlayers}`,
-              hasCrown: room.host === user?._id || room.host === user?.id,
-              host: room.hostName || room.host?.username || 'Unknown',
-              gameMode: room.gameMode || 'Normal',
-              status: room.status || 'waiting',
-              maxPlayers: maxPlayers,
-              rounds: room.rounds || 5,
-              playersList: room.players || []
-            };
-          });
-          setRooms(formattedLocalRooms);
-          console.log('📦 Rooms fetched from localStorage:', formattedLocalRooms.length);
-        } else {
-          setRooms([]);
-        }
+        return formattedRooms;
       }
+      return [];
     } catch (error) {
-      console.error('Error fetching rooms from backend:', error);
-      
-      // Fallback to localStorage
-      try {
-        const localRooms = JSON.parse(localStorage.getItem('rooms') || '[]');
-        if (localRooms.length > 0) {
-          const formattedLocalRooms = localRooms.map(room => {
-            const playerCount = room.players?.length || 1;
-            const maxPlayers = room.maxPlayers || 10;
-            
-            return {
-              id: room.id || room.roomId,
-              roomId: room.roomId || room.id,
-              name: room.roomName || room.name || 'Game Room',
-              roomCode: room.roomCode || 'XXXXXX',
-              emoji: getRoomEmoji(room.gameMode),
-              round: `0 / ${room.rounds || 5}`,
-              players: `${playerCount} / ${maxPlayers}`,
-              hasCrown: room.host === user?._id || room.host === user?.id,
-              host: room.hostName || room.host?.username || 'Unknown',
-              gameMode: room.gameMode || 'Normal',
-              status: room.status || 'waiting',
-              maxPlayers: maxPlayers,
-              rounds: room.rounds || 5,
-              playersList: room.players || []
-            };
-          });
-          setRooms(formattedLocalRooms);
-          console.log('📦 Fallback: Rooms from localStorage:', formattedLocalRooms.length);
-        } else {
-          setRooms([]);
-        }
-      } catch (localError) {
-        console.error('Error reading localStorage:', localError);
-        setRooms([]);
-      }
+      console.error('Error fetching rooms:', error);
+      return [];
     }
   }, [API_URL, user, getRoomEmoji]);
 
-  // Handle join room
-  const handleJoinRoom = useCallback((roomId, roomName) => {
-    if (!roomId) {
-      alert('Invalid room ID');
-      return;
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const res = await axios.get(`${API_URL}/notifications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        setUnreadCount(res.data.notifications.filter(n => !n.isRead).length);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
     }
+  }, [API_URL]);
 
+  const handleJoinRoom = useCallback((roomId, roomName) => {
+    if (!roomId) return;
     const roomToJoin = rooms.find(r => r.id === roomId || r.roomId === roomId);
-    
+
     if (roomToJoin) {
       const roomData = {
         roomId: String(roomId),
@@ -207,20 +147,16 @@ const Dashboard = () => {
         hostName: roomToJoin.host || user?.username || 'Host',
         players: roomToJoin.playersList || []
       };
-      
+
       localStorage.setItem('currentRoom', JSON.stringify(roomData));
       navigate(`/room/${roomId}`);
-    } else {
-      alert('Room not found. Please try again.');
     }
   }, [rooms, user, navigate]);
 
-  // Handle create room
   const handleCreateRoom = useCallback(() => {
     navigate('/create-room');
   }, [navigate]);
 
-  // Handle quick play
   const handleQuickPlay = useCallback(() => {
     const availableRooms = rooms.filter(room => {
       if (!room.players) return false;
@@ -232,253 +168,204 @@ const Dashboard = () => {
       const randomRoom = availableRooms[Math.floor(Math.random() * availableRooms.length)];
       handleJoinRoom(randomRoom.id || randomRoom.roomId, randomRoom.name);
     } else {
-      alert('No rooms available! Create a new room.');
       handleCreateRoom();
     }
   }, [rooms, handleJoinRoom, handleCreateRoom]);
 
-  // Refresh rooms manually
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchRooms();
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 500);
+    setTimeout(() => setRefreshing(false), 500);
   }, [fetchRooms]);
 
-  // Handle logout
   const handleLogout = useCallback(() => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('rememberMe');
-    localStorage.removeItem('currentRoom');
+    disconnectSocket();
+    localStorage.clear();
     navigate('/login');
   }, [navigate]);
 
-  // Load data on mount
   useEffect(() => {
-    isMounted.current = true;
-    
     const loadData = async () => {
-      setLoading(true);
-      await fetchUserData();
-      await fetchRooms();
-      setLoading(false);
+      try {
+        setLoading(true);
+        await fetchUserData();
+        await fetchRooms();
+        await fetchUnreadCount();
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
     };
-    
     loadData();
-
-    return () => {
-      isMounted.current = false;
-    };
+    return () => { isMounted.current = false; };
   }, []);
 
-  // Refresh rooms every 30 seconds
   useEffect(() => {
     if (loading) return;
-    
-    const interval = setInterval(() => {
-      fetchRooms();
-    }, 30000);
-
+    const interval = setInterval(() => { fetchRooms(); }, 30000);
     return () => clearInterval(interval);
   }, [loading, fetchRooms]);
 
+  useEffect(() => {
+    if (loading) return;
+    const socket = connectSocket();
+    if (socket) {
+      socket.on('notification', () => { setUnreadCount(prev => prev + 1); });
+    }
+    return () => {
+      const s = getSocket();
+      if (s) s.off('notification');
+    };
+  }, [loading]);
+
   if (loading) {
     return (
-      <div className="dashboard-container loading">
-        <div className="loader">Loading...</div>
+      <div className="dashboard-layout loading-state">
+        <div className="loader-spinner">Loading interface...</div>
       </div>
     );
   }
 
   return (
-    <div className="dashboard-container">
-      {/* Sidebar Navigation */}
-      <aside className="sidebar">
-        <div className="logo">🎮 MINDMAYHEM</div>
-        <nav className="nav-menu">
-          <button 
-            className={`nav-item ${activeTab === 'lobby' ? 'active' : ''}`}
-            onClick={() => setActiveTab('lobby')}
-          >
-            <Home size={22} />
-            <span>Lobby</span>
+    <div className="dashboard-layout">
+      {/* 1. Top Navbar Layout Block */}
+      <nav className="top-navigation-bar">
+        <div className="brand-logo" onClick={() => navigate('/')}>
+          MindMay<span>Hem</span>
+        </div>
+        
+        <div className="center-menu-pills">
+          <button className={`menu-pill ${activeTab === 'lobby' ? 'active' : ''}`} onClick={() => setActiveTab('lobby')}>
+            <Home size={16} /> <span>Lobby</span>
           </button>
-          <button 
-            className={`nav-item ${activeTab === 'friends' ? 'active' : ''}`}
-            onClick={() => setActiveTab('friends')}
-          >
-            <Users size={22} />
-            <span>Friends</span>
+          <button className="menu-pill" onClick={() => navigate('/friends')}>
+            <Users size={16} /> <span>Friends</span>
           </button>
-          <button 
-            className={`nav-item ${activeTab === 'history' ? 'active' : ''}`}
-            onClick={() => setActiveTab('history')}
-          >
-            <History size={22} />
-            <span>History</span>
+          <button className="menu-pill" onClick={() => navigate('/history')}>
+            <History size={16} /> <span>History</span>
           </button>
-          <button 
-            className={`nav-item ${activeTab === 'profile' ? 'active' : ''}`}
-            onClick={() => setActiveTab('profile')}
-          >
-            <User size={22} />
-            <span>Profile</span>
+          <button className="menu-pill" onClick={() => navigate('/profile')}>
+            <User size={16} /> <span>Profile</span>
           </button>
-          <button 
-            className="nav-item logout-btn"
-            onClick={handleLogout}
-          >
-            <LogOut size={22} />
-            <span>Logout</span>
+          <button className="menu-pill logout-pill" onClick={handleLogout}>
+            <LogOut size={16} /> <span>Logout</span>
           </button>
-        </nav>
-      </aside>
+        </div>
 
-      {/* Main Content Area */}
-      <main className="main-content">
-        {/* Header Profile Section */}
-        <header className="header">
-          <div className="profile-section">
-            <div className="avatar-wrapper">
+        <div className="navbar-right-avatar">
+          <img 
+            src={user?.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.username || 'default'}`} 
+            alt="User Graphic" 
+          />
+        </div>
+      </nav>
+
+      <div className="dashboard-content-frame">
+        {/* 2. Sub-Header Profile Metrics Row */}
+        <header className="player-sub-profile-header">
+          <div className="player-meta-block">
+            <div className="player-avatar-circle">
               <img 
-                src={user?.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.username || 'default'}`}
-                alt={user?.username || 'Avatar'} 
-                className="avatar" 
+                src={user?.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.username || 'default'}`} 
+                alt="Profile" 
               />
-              <span className="online-status"></span>
             </div>
-            <div className="profile-info">
-              <div className="profile-meta">
-                <span className="username">{user?.username || 'Guest'}</span>
-                <span className="level">Level {Math.floor((user?.gamesWon || 0) / 5) + 1}</span>
-                <span className="games-played">{user?.gamesPlayed || 0} games played</span>
+            <div className="player-stats-column">
+              <h3 className="player-display-name">{user?.username || 'Gamer'}</h3>
+              <div className="player-level-row">
+                <span>Level {Math.floor((user?.gamesWon || 0) / 5) + 1}</span>
+                <span className="divider-dot">•</span>
+                <span>{user?.gamesWon || 0} / 1200 XP</span>
               </div>
-              <div className="progress-container">
-                <div className="progress-bar" style={{ width: `${Math.min(((user?.gamesWon || 0) % 5) * 20, 100)}%` }}></div>
-                <span className="progress-text">{user?.gamesWon || 0} wins</span>
+              <div className="mini-xp-bar-track">
+                <div className="mini-xp-bar-fill" style={{ width: `${Math.min(((user?.gamesWon || 0) % 5) * 20 || 15, 100)}%` }}></div>
               </div>
             </div>
           </div>
 
-          <div className="header-actions">
-            <button className="action-btn" onClick={() => alert('Notifications coming soon!')}>
-              <Bell size={20} />
-              <span className="notification-badge">3</span>
+          <div className="quick-system-actions">
+            <button className="icon-circle-action-btn" onClick={() => navigate('/notifications')}>
+              <Bell size={18} />
+              {unreadCount > 0 && <span className="action-badge-dot">{unreadCount}</span>}
             </button>
-            <button className="action-btn" onClick={() => setActiveTab('profile')}>
-              <Settings size={20} />
+            <button className="icon-circle-action-btn" onClick={() => navigate('/profile')}>
+              <Settings size={18} />
+            </button>
+            <button className="icon-circle-action-btn refresh-sync-btn" onClick={handleRefresh} disabled={refreshing}>
+              <RefreshCw size={18} className={refreshing ? 'spinning' : ''} />
             </button>
           </div>
         </header>
 
-        {/* Hero Section */}
-        <section className="hero-card">
-          <div className="hero-text">
-            <h2>Ready to Play, {user?.username || 'Gamer'}? 🎯</h2>
-            <p>Join a room or create your own and invite friends!</p>
-            <div className="hero-stats">
-              <span>🏆 {user?.gamesWon || 0} Wins</span>
-              <span>🎮 {user?.gamesPlayed || 0} Games</span>
-              <span>📊 {rooms.length} Active Rooms</span>
-            </div>
-          </div>
-          <div className="hero-art">
-            <div className="splash-art">🎨</div>
-          </div>
-        </section>
-
-        {/* Quick Actions */}
-        <section className="action-cards">
-          <div className="card quick-play" onClick={handleQuickPlay}>
-            <Gamepad2 size={30} />
-            <h3>QUICK PLAY</h3>
-            <p>Find a random room</p>
-          </div>
-          <div className="card create-room" onClick={handleCreateRoom}>
-            <Plus size={30} />
-            <h3>CREATE ROOM</h3>
-            <p>Make your own room</p>
-          </div>
-        </section>
-
-        {/* Rooms Section */}
-        <section className="rooms-section">
-          <div className="section-header">
-            <h3>AVAILABLE ROOMS ({rooms.filter(r => r.status !== 'playing').length})</h3>
-            <div className="header-actions-right">
-              <button 
-                className="refresh-btn" 
-                onClick={handleRefresh}
-                disabled={refreshing}
-              >
-                <RefreshCw size={18} className={refreshing ? 'spinning' : ''} />
-                <span>Refresh</span>
+        {/* 3. Hero Card/Banner with Embedded Pill Buttons */}
+        <section className="horizontal-hero-banner">
+          <div className="hero-banner-left-content">
+            <h2>Ready to Play?</h2>
+            <p>Join a room or create your own and invite friends for a doodle showdown.</p>
+            
+            <div className="embedded-hero-actions-row">
+              <button className="hero-action-pill quick-play-pink-btn" onClick={handleQuickPlay}>
+                QUICK PLAY
               </button>
-              <button className="see-all" onClick={() => setActiveTab('lobby')}>
-                See All
+              <button className="hero-action-pill create-room-cyan-btn" onClick={handleCreateRoom}>
+                CREATE ROOM
               </button>
             </div>
           </div>
 
-          <div className="rooms-list">
+          <div className="hero-banner-right-artwork">
+            <div className="floating-palette-icon">🎨</div>
+          </div>
+        </section>
+
+        {/* 4. Two-Column Active Rooms Grid Block */}
+        <section className="active-rooms-grid-wrapper">
+          <div className="rooms-section-headline">
+            <h3>Active Rooms</h3>
+            <span className="see-all-trigger-link" onClick={() => handleRefresh()}>See All</span>
+          </div>
+
+          <div className="two-column-rooms-grid">
             {rooms.length === 0 ? (
-              <div className="empty-state">
-                <p>No rooms available. Create one!</p>
-                <button className="create-room-btn" onClick={handleCreateRoom}>
-                  Create Room
-                </button>
+              <div className="empty-rooms-card">
+                <p>No active rooms setup yet. Create one to begin!</p>
               </div>
             ) : (
-              rooms.map((room) => {
+              rooms.slice(0, 4).map((room) => {
                 const isFull = room.players ? parseInt(room.players.split(' / ')[0]) >= parseInt(room.players.split(' / ')[1]) : false;
                 const isPlaying = room.status === 'playing';
                 const roomId = room.id || room.roomId;
-                
+
                 return (
-                  <div key={roomId} className={`room-row ${isPlaying ? 'room-playing' : ''}`}>
-                    <div className="room-details">
-                      <div className={`room-icon icon-bg-${String(roomId).slice(-1) || 1}`}>
-                        {room.emoji || '🎮'}
+                  <div key={roomId} className="grid-room-card-cell">
+                    <div className="card-left-identity-group">
+                      <div className={`card-avatar-emoji icon-bg-variant-${String(roomId).slice(-1) || '1'}`}>
+                        {room.emoji || '🎨'}
                       </div>
-                      <div className="room-meta">
+                      <div className="card-room-meta-details">
                         <h4>
-                          {room.name || 'Game Room'} 
-                          {room.hasCrown && <Crown size={14} className="crown-icon" />}
-                          {isPlaying && <span className="status-badge playing">🔴 LIVE</span>}
-                          {isFull && <span className="status-badge full">FULL</span>}
+                          {room.name || 'Game Room'}
+                          {room.hasCrown && <Crown size={12} className="meta-crown-icon" />}
                         </h4>
-                        <p>Round {room.round || '0 / 5'} • {room.gameMode || 'Normal'}</p>
-                        <p className="room-host">Host: {room.host || 'Unknown'}</p>
+                        <p>Round {room.round?.split(' / ')[1] || 5} • {room.players || '0/10'} players</p>
                       </div>
                     </div>
-                    
-                    <div className="room-status">
-                      <span className="player-count">{room.players || '0 / 10'}</span>
-                      <button 
-                        className={`join-btn ${isFull || isPlaying ? 'disabled' : ''}`}
-                        onClick={() => {
-                          if (!isFull && !isPlaying) {
-                            handleJoinRoom(roomId, room.name);
-                          } else if (isFull) {
-                            alert('This room is full!');
-                          } else if (isPlaying) {
-                            alert('Game already started!');
-                          }
-                        }}
-                        disabled={isFull || isPlaying}
-                      >
-                        {isPlaying ? 'PLAYING' : isFull ? 'FULL' : 'JOIN'}
-                      </button>
-                    </div>
+
+                    <button 
+                      className={`grid-join-action-btn ${isFull || isPlaying ? 'disabled-status' : ''}`}
+                      disabled={isFull || isPlaying}
+                      onClick={() => handleJoinRoom(roomId, room.name)}
+                    >
+                      {isPlaying ? 'PLAYING' : isFull ? 'FULL' : 'JOIN'}
+                    </button>
                   </div>
                 );
               })
             )}
           </div>
         </section>
-      </main>
+      </div>
     </div>
   );
 };
