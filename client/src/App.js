@@ -5,6 +5,11 @@ import CreateRoom from './pages/Login/CreateRoom';
 import GameRoom from './pages/Login/GameRoom';
 import Register from './pages/Login/Register';
 import GamePlay from './pages/Login/GamePlay';
+import Friends from './pages/Login/Friends';
+import Notifications from './pages/Login/Notifications';
+import Profile from './pages/Login/Profile';
+
+
 function App() {
   return (
     <Router>
@@ -14,10 +19,11 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/Home" element={<Home />} />
         <Route path="/create-room" element={<CreateRoom />} />
-        {/* <Route path="/room/:roomSlug" element={<GameRoom />} /> 
-        <Route path="/game" element={<GamePlay />} /> */}
         <Route path="/room/:roomId" element={<GameRoom />} />
-<Route path="/gameplay/:roomId" element={<GamePlay />} />
+        <Route path="/gameplay/:roomId" element={<GamePlay />} />
+        <Route path="/friends" element={<Friends />} />
+        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/profile" element={<Profile />} />
       </Routes>
     </Router>
   );

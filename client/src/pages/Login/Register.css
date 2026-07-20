@@ -1,445 +1,347 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+
 :root {
-  --bg-dark: #0b071e;
-  --bg-card: #150f31;
-  --bg-field: #1b133e;
-  --text-main: #ffffff;
-  --text-muted: #8b85b4;
-  --accent-pink: #f72585;
-  --accent-teal: #00f5d4;
-  --accent-gold: #ffbd00;
+  --app-bg-radial: radial-gradient(circle at 50% 30%, #121033 0%, #060513 100%);
+  --input-bg-color: #1a1e3b;
+  --input-border-color: rgba(255, 255, 255, 0.08);
+  --text-white: #ffffff;
+  --text-grey-muted: #7b83a2;
+  --accent-neon-pink: #ff2c77;
 }
 
-.web-auth-wrapper {
+.register-page-bg {
   min-height: 100vh;
-  background-color: var(--bg-dark);
+  background: var(--app-bg-radial);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 3rem 2rem;
   box-sizing: border-box;
-}
-
-.register-card-container {
-  display: grid;
-  grid-template-columns: 1.1fr 1.2fr;
-  width: 100%;
-  max-width: 1050px;
-  background-color: var(--bg-card);
-  border-radius: 28px;
-  overflow: hidden;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.03);
-}
-
-/* Left Aesthetic Column Panel */
-.auth-art-panel {
-  background: linear-gradient(145deg, #100a30 0%, #070416 100%);
-  padding: 3.5rem 3rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
   position: relative;
-  border-right: 1px solid rgba(255, 255, 255, 0.02);
+  font-family: 'Fredoka', system-ui, sans-serif;
 }
 
-.lobby-back-btn {
+/* Isolated top left back arrow button */
+.top-back-arrow-btn {
   position: absolute;
-  top: 1.5rem;
-  left: 1.5rem;
-  background: var(--bg-field);
+  top: 40px;
+  left: 40px;
+  background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--text-white);
   cursor: pointer;
-  padding: 0.5rem 1rem;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-weight: 600;
-  font-size: 0.9rem;
-  transition: all 0.2s;
-}
-
-.lobby-back-btn:hover {
-  color: var(--text-main);
-  background: #251a54;
-}
-
-.doodle-branding {
-  text-align: center;
-  margin-top: 1.5rem;
-}
-
-.logo-title {
-  font-size: 2.8rem;
-  font-weight: 900;
-  color: var(--text-main);
-  position: relative;
-  display: inline-block;
-}
-
-.highlight-up {
-  color: var(--accent-pink);
-}
-
-.crown-doodle {
-  position: absolute;
-  top: -26px;
-  left: 42%;
-  transform: rotate(-10deg);
-  font-size: 1.5rem;
-}
-
-.tagline {
-  color: var(--text-muted);
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0.5rem 0 0 0;
-}
-
-/* Profile Picture Avatar Creator Section */
-.avatar-upload-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 2rem;
-}
-
-.avatar-preview-ring {
-  position: relative;
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  padding: 4px;
-  background: linear-gradient(135deg, var(--accent-pink), var(--accent-teal));
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-}
-
-.avatar-gradient-bg {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: #351a66;
-  overflow: hidden;
+  opacity: 0.8;
+  transition: opacity 0.2s, transform 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.register-avatar-img {
-  width: 85%;
-  height: 85%;
+.top-back-arrow-btn:hover {
+  opacity: 1;
+  transform: translateX(-2px);
+}
+
+/* Centralized form alignment block */
+.register-central-wrapper {
+  width: 100%;
+  max-width: 540px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.register-form-flow {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+
+.register-header-section {
+  text-align: center;
+  margin-bottom: 0.2rem;
+}
+
+.register-main-title {
+  font-size: 2.3rem;
+  font-weight: 700;
+  color: var(--text-white);
+  margin: 0 0 0.4rem 0;
+  letter-spacing: -0.5px;
+}
+
+.register-subtitle {
+  color: var(--text-grey-muted);
+  font-size: 0.95rem;
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+
+/* Avatar layout wrapper style matching UI graphic */
+.centered-avatar-uploader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0.2rem 0 0.6rem 0;
+}
+
+.avatar-circle-frame {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e052a0 0%, #a252df 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.main-avatar-element {
+  width: 65%;
+  height: 65%;
   object-fit: contain;
 }
 
-.avatar-camera-badge {
+.pink-camera-badge {
   position: absolute;
-  bottom: 2px;
-  right: 2px;
-  background-color: var(--text-main);
-  color: var(--bg-dark);
-  padding: 0.5rem;
+  bottom: 0px;
+  right: 0px;
+  background-color: var(--accent-neon-pink);
+  color: var(--text-white);
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 2px solid #111030;
   transition: transform 0.2s;
 }
 
-.avatar-camera-badge:hover {
+.pink-camera-badge:hover {
   transform: scale(1.1);
 }
 
-.upload-label {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  font-weight: 600;
-}
-
-/* Right Interactive Form Panel */
-.auth-form-panel {
-  padding: 3.5rem;
-  display: flex;
-  align-items: center;
-}
-
-.actual-form {
-  width: 100%;
+/* Full Width Pill Shape Inputs layout engine */
+.register-input-row {
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
-}
-
-.form-desktop-header {
-  font-size: 1.8rem;
-  font-weight: 800;
-  margin: 0 0 0.5rem 0;
-  letter-spacing: 0.5px;
-}
-
-.input-icon-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.field-icon {
-  position: absolute;
-  left: 1.25rem;
-  color: var(--text-muted);
-}
-
-.input-icon-wrapper input {
   width: 100%;
-  background-color: var(--bg-field);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  padding: 1.1rem 3.25rem 1.1rem 3.25rem;
-  border-radius: 16px;
-  color: var(--text-main);
-  font-size: 1.05rem;
-  outline: none;
-  transition: all 0.2s;
+  gap: 0.4rem;
 }
 
-.input-icon-wrapper input:focus {
-  border-color: var(--accent-teal);
-  background-color: rgba(27, 19, 62, 0.5);
-}
-
-.toggle-password-btn {
-  position: absolute;
-  right: 1.25rem;
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-}
-
-.toggle-password-btn:hover {
-  color: var(--text-main);
-}
-
-/* Custom Interactive Checkbox Engine rules */
-.terms-checkbox-row {
-  margin: 0.25rem 0;
-}
-
-.checkbox-custom-container {
-  display: flex;
-  align-items: center;
+.wide-pill-input {
   position: relative;
-  padding-left: 2.2rem;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.input-left-icon {
+  position: absolute;
+  left: 1.5rem;
+  color: var(--text-grey-muted);
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.wide-pill-input input {
+  width: 100%;
+  background-color: var(--input-bg-color);
+  border: 1px solid var(--input-border-color);
+  padding: 1.25rem 1.5rem 1.25rem 3.5rem;
+  border-radius: 50px;
+  color: var(--text-white);
+  font-size: 1rem;
+  outline: none;
+  font-family: system-ui, sans-serif;
+  transition: border-color 0.2s ease;
+}
+
+.wide-pill-input input::placeholder {
+  color: #4a4e6d;
+}
+
+.wide-pill-input input:focus {
+  border-color: rgba(255, 44, 119, 0.3);
+}
+
+.wide-pill-input.has-error input {
+  border-color: #ff4747;
+}
+
+/* Square checkbox design matching image specification */
+.legal-checkbox-container {
+  display: flex;
+  flex-direction: column;
+  margin-top: -0.2rem;
+}
+
+.flat-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   cursor: pointer;
-  font-size: 0.95rem;
   user-select: none;
 }
 
-.checkbox-custom-container input {
-  position: absolute;
-  opacity: 0;
+.flat-checkbox-label input[type="checkbox"] {
+  appearance: none;
+  background-color: transparent;
+  margin: 0;
+  font: inherit;
+  color: var(--text-white);
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid var(--text-white);
+  border-radius: 3px;
+  display: grid;
+  place-content: center;
   cursor: pointer;
-  height: 0;
-  width: 0;
 }
 
-.checkmark {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  left: 0;
-  height: 20px;
-  width: 20px;
-  background-color: var(--bg-field);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  transition: background-color 0.2s;
-}
-
-.checkbox-custom-container:hover input ~ .checkmark {
-  background-color: #251a54;
-}
-
-.checkbox-custom-container input:checked ~ .checkmark {
-  background-color: var(--accent-teal);
-  border-color: var(--accent-teal);
-}
-
-.checkmark:after {
+.flat-checkbox-label input[type="checkbox"]::before {
   content: "";
-  position: absolute;
-  display: none;
+  width: 7px;
+  height: 7px;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  box-shadow: inset 1em 1em var(--accent-neon-pink);
+  transform-origin: center;
+  background-color: var(--accent-neon-pink);
+  border-radius: 1px;
 }
 
-.checkbox-custom-container input:checked ~ .checkmark:after {
-  display: block;
+.flat-checkbox-label input[type="checkbox"]:checked::before {
+  transform: scale(1);
 }
 
-.checkbox-custom-container .checkmark:after {
-  left: 6px;
-  top: 2px;
-  width: 5px;
-  height: 10px;
-  border: solid #000000;
-  border-width: 0 2.5px 2.5px 0;
-  transform: rotate(45deg);
+.checkbox-text-span {
+  color: var(--text-white);
+  font-size: 0.85rem;
+  font-family: system-ui, sans-serif;
 }
 
-.terms-text {
-  color: var(--text-muted);
+.pink-highlight {
+  color: var(--accent-neon-pink);
   font-weight: 500;
-  line-height: 1.4;
 }
 
-.cyan-highlight {
-  color: var(--accent-teal);
-  font-weight: 600;
-}
-
-/* Call to Action Button styling */
-.register-submit-btn {
-  background-color: var(--accent-teal);
-  color: #000000;
+/* Giant Registration Button with Neon Glow DropShadow effect */
+.neon-pink-register-btn {
+  background-color: var(--accent-neon-pink);
+  color: var(--text-white);
   border: none;
-  border-radius: 16px;
-  padding: 1.2rem;
+  border-radius: 50px;
+  padding: 1.3rem;
   font-size: 1.1rem;
-  font-weight: 800;
-  letter-spacing: 0.5px;
+  font-weight: 700;
   cursor: pointer;
-  margin-top: 0.5rem;
-  transition: opacity 0.2s, transform 0.1s;
-  box-shadow: 0 8px 24px rgba(0, 245, 212, 0.2);
+  letter-spacing: 0.5px;
+  margin-top: 0.2rem;
+  transition: transform 0.1s, box-shadow 0.2s;
+  box-shadow: 0 12px 35px rgba(255, 44, 119, 0.45);
 }
 
-.register-submit-btn:hover {
-  opacity: 0.95;
+.neon-pink-register-btn:hover {
+  box-shadow: 0 14px 40px rgba(255, 44, 119, 0.6);
 }
 
-.register-submit-btn:active {
+.neon-pink-register-btn:active {
   transform: scale(0.99);
 }
 
-.register-redirect-text {
+.neon-pink-register-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-loading-align {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Redirection Footer Line */
+.already-account-footer {
   text-align: center;
-  color: var(--text-muted);
-  font-size: 0.95rem;
-  margin-top: 0.5rem;
-  font-weight: 500;
+  color: var(--text-white);
+  font-size: 0.9rem;
+  margin-top: 0.2rem;
+  font-family: system-ui, sans-serif;
+  opacity: 0.9;
 }
 
-.cyan-link {
-  color: var(--accent-teal);
+.pink-login-trigger {
+  color: var(--accent-neon-pink);
+  font-weight: 600;
   cursor: pointer;
-  font-weight: 700;
 }
 
-.cyan-link:hover {
+.pink-login-trigger:hover {
   text-decoration: underline;
 }
 
-/* Media Queries Break Rules for Mobile Displays */
-@media (max-width: 850px) {
-  .register-card-container {
-    grid-template-columns: 1fr;
-    max-width: 480px;
-  }
-  .auth-art-panel {
-    padding: 4.5rem 2rem 2rem 2rem;
-    border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  }
-  .form-desktop-header {
-    display: none;
-  }
-  .auth-form-panel {
-    padding: 2.5rem 2rem;
-  }
+/* System Messages Alerts Banner Box styles */
+.field-error-msg {
+  color: #ff4747;
+  font-size: 0.8rem;
+  padding-left: 1rem;
+  font-family: system-ui, sans-serif;
 }
 
-.error-text {
-  color: #ff6b6b;
-  font-size: 12px;
+.blocks-error {
+  padding-left: 0;
   margin-top: 4px;
-  display: block;
 }
 
-.has-error {
-  border-color: #ff6b6b !important;
-}
-
-.error-message-global {
-  background: rgba(255, 107, 107, 0.1);
-  border: 1px solid #ff6b6b;
-  color: #ff6b6b;
-  padding: 10px;
-  border-radius: 8px;
-  margin-bottom: 15px;
-  text-align: center;
-}
-
-.input-icon-wrapper.has-error {
-  border-color: #ff6b6b;
-  box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.2);
-}
-
-.register-submit-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.spinning {
-  animation: spin 1s linear infinite;
-  margin-right: 8px;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.terms-checkbox-row.has-error .checkbox-custom-container {
-  border-color: #ff6b6b;
-}
-
-.avatar-camera-badge {
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.avatar-camera-badge:hover {
-  transform: scale(1.1);
-  background: #00e5ff;
-}
-/* Success Message */
-.success-message-global {
-  background: rgba(0, 212, 255, 0.1);
-  border: 1px solid #00d4ff;
-  color: #00d4ff;
-  padding: 12px 15px;
-  border-radius: 8px;
-  margin-bottom: 15px;
+.register-success-alert {
+  background: rgba(46, 213, 115, 0.1);
+  border: 1px solid #2ed573;
+  color: #2ed573;
+  padding: 14px;
+  border-radius: 50px;
+  font-size: 0.9rem;
   text-align: center;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  font-size: 14px;
-  animation: fadeIn 0.5s ease;
+  gap: 8px;
+  font-family: system-ui, sans-serif;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
+.register-error-alert {
+  background: rgba(255, 71, 71, 0.1);
+  border: 1px solid #ff4747;
+  color: #ff4747;
+  padding: 14px;
+  border-radius: 50px;
+  font-size: 0.9rem;
+  text-align: center;
+  font-family: system-ui, sans-serif;
+}
+
+.spin-effect {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 600px) {
+  .top-back-arrow-btn {
+    top: 24px;
+    left: 24px;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  .register-main-title {
+    font-size: 2rem;
   }
 }
