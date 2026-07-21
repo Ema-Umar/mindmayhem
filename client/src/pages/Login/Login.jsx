@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Loader } from 'lucide-react';
 import axios from 'axios';
 import './Login.css';
+import catMascot from '../../images/cat23.png'; 
+import pencilImage from '../../images/pencil.png'; // Adjust path based on file location
 
+// Go up two levels // Adjust relative path to where the file lives
 const Login = () => {
   const navigate = useNavigate();
   const [identifier, setIdentifier] = useState('');
@@ -11,7 +14,6 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(false); 
-
   const API_URL = 'http://localhost:5000/api';
 
   useEffect(() => {
@@ -78,12 +80,15 @@ const Login = () => {
           </div>
           
           {/* Rounded box holding the cat image */}
-          <div className="mascot-box-container">
-            <div className="mascot-inner-card">
-              <img src="/path-to-your-cat-image.png" alt="Cat Mascot" className="cat-mascot-image" />
+          <div className="mascot-box-container">       
+    <div className="mascot-inner-card">
+      <img src={catMascot} alt="Cat Mascot" className="cat-mascot-image" />
+    </div>
+ 
+             <div className="diagonal-pencil">
+  <img src={pencilImage} width="36" height="36" alt="Pencil" />
+</div>
             </div>
-            <div className="diagonal-pencil">✏️</div>
-          </div>
         </div>
 
         {/* Right Standalone Form Card Component */}

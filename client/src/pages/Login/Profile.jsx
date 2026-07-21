@@ -218,7 +218,7 @@ const Profile = () => {
       {/* Top Shared Navbar Layout */}
       <nav className="top-navigation-bar">
         <div className="brand-logo" onClick={() => navigate('/Home')}>
-          Doodle<span>Up!</span>
+          MindMey<span>Hem</span>
         </div>
         
         <div className="center-menu-pills">

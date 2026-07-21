@@ -576,6 +576,7 @@ app.get('/api/game/stats', authMiddleware, async (req, res) => {
   }
 });
 
+
 // ============================================
 // FRIEND ROUTES
 // ============================================
@@ -935,6 +936,86 @@ app.delete('/api/notifications/:id', authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to delete notification' });
   }
 });
+
+// ============================================
+// GAME HISTORY ROUTES
+// ============================================
+
+// Get Game History
+app.get('/api/game/history', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    // Find all rooms where user was a player
+    const rooms = await Room.find({
+      'players.id': userId,
+      status: 'finished'
+    })
+    .populate('host', 'username avatar')
+    .sort({ finishedAt: -1 })
+    .limit(50);
+
+    // Format history
+    const history = rooms.map(room => {
+      // Find user's rank in this room
+      const sortedPlayers = [...room.players].sort((a, b) => {
+        // Sort by score if available, otherwise by join time
+        return (a.score || 0) - (b.score || 0);
+      });
+      
+      const userIndex = sortedPlayers.findIndex(p => 
+        p.id.toString() === userId
+      );
+      
+      const rank = userIndex !== -1 ? `${userIndex + 1}${getRankSuffix(userIndex + 1)}` : 'N/A';
+      const score = sortedPlayers[userIndex]?.score || 0;
+      
+      return {
+        id: room._id,
+        roomName: room.roomName,
+        gameMode: room.gameMode,
+        rank: rank,
+        score: `${score} pts`,
+        players: room.players.length,
+        date: room.finishedAt || room.createdAt,
+        timeAgo: getTimeAgo(room.finishedAt || room.createdAt)
+      };
+    });
+
+    res.json({
+      success: true,
+      history: history
+    });
+
+  } catch (error) {
+    console.error('Get history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch history'
+    });
+  }
+});
+
+// Helper function for rank suffix
+function getRankSuffix(n) {
+  if (n === 1) return 'st';
+  if (n === 2) return 'nd';
+  if (n === 3) return 'rd';
+  return 'th';
+}
+
+// Helper function for time ago
+function getTimeAgo(date) {
+  const diffMs = Date.now() - new Date(date).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(date).toLocaleDateString();
+} 
 
 // Mark All Notifications as Read
 app.post('/api/notifications/read-all', authMiddleware, async (req, res) => {
