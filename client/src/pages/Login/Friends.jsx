@@ -173,7 +173,7 @@ const FriendsPage = () => {
       {/* Unified Top Navigation Bar */}
       <nav className="top-navigation-bar">
         <div className="brand-logo" onClick={() => navigate('/Home')}>
-          Doodle<span>Up!</span>
+          MindMey<span>Hem</span>
         </div>
         
         <div className="center-menu-pills">

@@ -8,7 +8,7 @@ import GamePlay from './pages/Login/GamePlay';
 import Friends from './pages/Login/Friends';
 import Notifications from './pages/Login/Notifications';
 import Profile from './pages/Login/Profile';
-
+import GameHistory from './pages/Login/GameHistory'; // 1. Import History component
 
 function App() {
   return (
@@ -24,6 +24,7 @@ function App() {
         <Route path="/friends" element={<Friends />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/history" element={<GameHistory />} />
       </Routes>
     </Router>
   );
