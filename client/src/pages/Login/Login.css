@@ -178,7 +178,149 @@
 .pill-input-wrapper input:focus {
   border-color: rgba(255, 44, 119, 0.3);
 }
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
 
+:root {
+  --app-bg-gradient: radial-gradient(circle at 80% 20%, #111032 0%, #070614 100%);
+  --card-bg-color: #11152d;
+  --field-bg-color: #1a1e3b;
+  --border-field: rgba(255, 255, 255, 0.08);
+  --text-primary: #ffffff;
+  --text-secondary: #7b83a2;
+  --neon-pink: #ff2c77;
+}
+
+.doodle-page-bg {
+  min-height: 100vh;
+  background: var(--app-bg-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  box-sizing: border-box;
+  font-family: 'Fredoka', system-ui, sans-serif;
+}
+
+/* Outer layout grid directly on background canvas */
+.doodle-main-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  max-width: 1080px;
+  align-items: center;
+  gap: 6rem;
+  margin: 0 auto; /* Center the entire layout */
+}
+
+/* Left Free Floating Elements */
+.doodle-left-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  justify-content: center;
+  align-items: flex-start; /* Align text to left */
+}
+
+/* For smaller screens, center everything */
+@media (max-width: 900px) {
+  .doodle-main-layout {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+    max-width: 460px;
+    margin: 0 auto;
+  }
+  
+  .doodle-left-content {
+    align-items: center;
+    text-align: center;
+    width: 100%;
+  }
+  
+  .doodle-description {
+    max-width: 100%;
+    text-align: center;
+  }
+  
+  .doodle-logo {
+    font-size: 3rem;
+    justify-content: center;
+  }
+  
+  .brand-header-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+  }
+  
+  .mascot-box-container {
+    display: none; /* Hide mascot on small screens */
+  }
+  
+  .doodle-right-card {
+    padding: 2rem 1.5rem;
+    width: 100%;
+    max-width: 460px;
+    margin: 0 auto;
+  }
+  
+  .doodle-tagline {
+    text-align: center;
+  }
+}
+
+/* For tablet screens */
+@media (min-width: 901px) and (max-width: 1100px) {
+  .doodle-main-layout {
+    gap: 3rem;
+    padding: 0 1rem;
+  }
+  
+  .doodle-logo {
+    font-size: 3.2rem;
+  }
+  
+  .mascot-box-container {
+    width: 180px;
+    height: 180px;
+  }
+}
+
+/* Center the logo crown */
+.doodle-logo {
+  font-size: 4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  letter-spacing: -1px;
+}
+
+.crown-emoji {
+  position: absolute;
+  top: -24px;
+  right: -2px;
+  font-size: 1.6rem;
+  transform: rotate(12deg);
+}
+
+/* Center the right card on all screens */
+.doodle-right-card {
+  background-color: var(--card-bg-color);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 28px;
+  padding: 4rem 3.5rem;
+  width: 100%;
+  max-width: 460px;
+  box-sizing: border-box;
+  box-shadow: 0 4px 40px rgba(0, 0, 0, 0.4);
+  margin: 0 auto;
+}
+
+/* Rest of your existing styles remain the same */
 /* Alignment Row */
 .form-actions-row {
   display: flex;

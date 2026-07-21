@@ -4,6 +4,7 @@ import { Mail, Lock, Loader } from 'lucide-react';
 import axios from 'axios';
 import './Login.css';
 import catMascot from '../../images/cat23.png'; 
+import pencilImage from '../../images/pencil.png'; // Adjust path based on file location
 
 // Go up two levels // Adjust relative path to where the file lives
 const Login = () => {
@@ -84,8 +85,10 @@ const Login = () => {
       <img src={catMascot} alt="Cat Mascot" className="cat-mascot-image" />
     </div>
  
-            <div className="diagonal-pencil">✏️</div>
-          </div>
+             <div className="diagonal-pencil">
+  <img src={pencilImage} width="36" height="36" alt="Pencil" />
+</div>
+            </div>
         </div>
 
         {/* Right Standalone Form Card Component */}

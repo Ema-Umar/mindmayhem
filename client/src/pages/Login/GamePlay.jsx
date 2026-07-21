@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Pencil, Eraser, Trash2, Send, Trophy, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
+import { connectSocket, getSocket } from '../../socket';
 import './GamePlay.css';
 
 const GameBoard = () => {
@@ -24,13 +25,14 @@ const GameBoard = () => {
   const [isArtist, setIsArtist] = useState(true);
   const [scores, setScores] = useState({});
   const [guesses, setGuesses] = useState([]);
-  const [gameState, setGameState] = useState('playing'); // 'playing' | 'roundEnd' | 'gameOver'
+  const [gameState, setGameState] = useState('playing');
   const [roundEndMessage, setRoundEndMessage] = useState('');
   const [artistIndex, setArtistIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [socket, setSocket] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
 
   const API_URL = 'http://localhost:5000/api';
-
   const wordList = [
     'BALLOON', 'DOG', 'CAT', 'SUN', 'HOUSE', 'FLOWER', 'TREE', 'CAR', 'BIRD',
     'FISH', 'STAR', 'MOON', 'APPLE', 'BANANA', 'PIZZA', 'HAPPY', 'SAD', 'ANGRY',
@@ -41,21 +43,68 @@ const GameBoard = () => {
 
   const getRandomWord = () => wordList[Math.floor(Math.random() * wordList.length)];
 
-  const updateGameStats = async (won) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      await axios.post(`${API_URL}/game/stats`, {
-        gamesPlayed: 1,
-        gamesWon: won ? 1 : 0
-      }, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-    } catch (error) {
-      console.error('Error updating stats:', error);
-    }
-  };
+  // ============================================
+  // SOCKET.IO SETUP - REAL-TIME
+  // ============================================
+  useEffect(() => {
+    const socketInstance = connectSocket();
+    setSocket(socketInstance);
 
+    if (socketInstance) {
+      socketInstance.on('connect', () => {
+        console.log('✅ Socket connected for game');
+        setIsConnected(true);
+      });
+
+      // Receive real-time drawing data
+      socketInstance.on('drawing-data', (data) => {
+        drawOnCanvas(data);
+      });
+
+      // Receive real-time guesses
+      socketInstance.on('new-guess', (guessData) => {
+        setGuesses(prev => [guessData, ...prev]);
+      });
+
+      // Receive round updates
+      socketInstance.on('round-update', (data) => {
+        setCurrentRound(data.round);
+        setWordToDraw(data.word);
+        setCurrentArtist(data.artist);
+        setIsArtist(data.artist.isYou || false);
+        setTimeLeft(80);
+        setGuesses([]);
+        setGameState('playing');
+        clearCanvas();
+      });
+
+      // Receive game over
+      socketInstance.on('game-over', (data) => {
+        setGameState('gameOver');
+        setScores(data.scores);
+      });
+
+      // Receive score updates
+      socketInstance.on('score-update', (data) => {
+        setScores(prev => ({
+          ...prev,
+          [data.playerId]: data.newScore
+        }));
+      });
+
+      return () => {
+        socketInstance.off('drawing-data');
+        socketInstance.off('new-guess');
+        socketInstance.off('round-update');
+        socketInstance.off('game-over');
+        socketInstance.off('score-update');
+      };
+    }
+  }, []);
+
+  // ============================================
+  // LOAD GAME DATA
+  // ============================================
   useEffect(() => {
     const loadGameData = async () => {
       try {
@@ -101,6 +150,12 @@ const GameBoard = () => {
 
         const word = getRandomWord();
         setWordToDraw(word);
+
+        // If not solo, join the room on socket
+        if (!solo && socket) {
+          socket.emit('join-game-room', { roomId, userId: currentUserId });
+        }
+
       } catch (error) {
         console.error('Error loading game:', error);
       } finally {
@@ -110,9 +165,18 @@ const GameBoard = () => {
     loadGameData();
   }, [location.state, roomId]);
 
+  // ============================================
+  // TIMER
+  // ============================================
   useEffect(() => {
     if (timeLeft <= 0 || gameState !== 'playing') {
-      if (timeLeft <= 0 && gameState === 'playing') handleRoundEnd('timeout');
+      if (timeLeft <= 0 && gameState === 'playing') {
+        handleRoundEnd('timeout');
+        // Notify server about round end
+        if (socket && !isSolo) {
+          socket.emit('round-ended', { roomId, round: currentRound });
+        }
+      }
       return;
     }
     const interval = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
@@ -127,8 +191,14 @@ const GameBoard = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // ============================================
+  // DRAWING HANDLERS WITH REAL-TIME SYNC
+  // ============================================
   const startDrawing = (e) => {
-    if (!isArtist && !isSolo) return;
+    if (!isArtist && !isSolo) {
+      alert('Only the artist can draw!');
+      return;
+    }
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -155,6 +225,33 @@ const GameBoard = () => {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.stroke();
+
+    // Send drawing data to other players (REAL-TIME!)
+    if (socket && !isSolo && isArtist) {
+      socket.emit('drawing-data', {
+        roomId,
+        x, y,
+        color: ctx.strokeStyle,
+        width: ctx.lineWidth,
+        isEraser: tool === 'eraser'
+      });
+    }
+  };
+
+  // Draw on canvas from received data (REAL-TIME!)
+  const drawOnCanvas = (data) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    ctx.lineTo(data.x, data.y);
+    ctx.strokeStyle = data.color;
+    ctx.lineWidth = data.width;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(data.x, data.y);
   };
 
   const stopDrawing = () => setIsDrawing(false);
@@ -166,12 +263,26 @@ const GameBoard = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
+  // ============================================
+  // GUESS HANDLING (REAL-TIME)
+  // ============================================
   const handleGuess = (e) => {
     e.preventDefault();
     if (!guessText.trim() || (isArtist && !isSolo)) return;
 
     const guess = guessText.trim().toUpperCase();
     setGuessText('');
+
+    // Send guess to server
+    if (socket && !isSolo) {
+      socket.emit('guess', {
+        roomId,
+        playerId: players.find(p => p.isYou)?.id,
+        playerName: players.find(p => p.isYou)?.name,
+        guess,
+        wordToDraw
+      });
+    }
 
     if (guess === wordToDraw) {
       const points = Math.max(10, Math.ceil(timeLeft / 5) * 2);
@@ -192,6 +303,9 @@ const GameBoard = () => {
     }
   };
 
+  // ============================================
+  // ROUND MANAGEMENT (REAL-TIME)
+  // ============================================
   const handleRoundEnd = (reason) => {
     if (gameState === 'roundEnd' || gameState === 'gameOver') return;
     setGameState('roundEnd');
@@ -199,19 +313,18 @@ const GameBoard = () => {
   };
 
   const startNewRound = () => {
-    setCurrentRound(prev => prev + 1);
-    setTimeLeft(80);
-    setGuesses([]);
-    setRoundEndMessage('');
-    setGameState('playing');
-    clearCanvas();
-    
     const nextArtistIndex = (artistIndex + 1) % players.length;
     setArtistIndex(nextArtistIndex);
     const newArtist = players[nextArtistIndex] || players[0];
     setCurrentArtist(newArtist);
     setIsArtist(newArtist?.isYou || false);
-    setWordToDraw(getRandomWord());
+    const newWord = getRandomWord();
+    setWordToDraw(newWord);
+    setTimeLeft(80);
+    setGuesses([]);
+    setRoundEndMessage('');
+    setGameState('playing');
+    clearCanvas();
   };
 
   const handleNextRound = () => {
@@ -219,13 +332,46 @@ const GameBoard = () => {
       setGameState('gameOver');
       const player = players.find(p => p.isYou);
       updateGameStats(player && scores[player.id] > 0);
+      
+      // Notify server about game over
+      if (socket && !isSolo) {
+        socket.emit('game-ended', { roomId, scores });
+      }
     } else {
       startNewRound();
+      
+      // Notify server about new round
+      if (socket && !isSolo) {
+        socket.emit('new-round', {
+          roomId,
+          round: currentRound + 1,
+          word: wordToDraw,
+          artist: currentArtist
+        });
+      }
+    }
+  };
+
+  const updateGameStats = async (won) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      await axios.post(`${API_URL}/game/stats`, {
+        gamesPlayed: 1,
+        gamesWon: won ? 1 : 0
+      }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (error) {
+      console.error('Error updating stats:', error);
     }
   };
 
   const handleLeaveGame = () => {
     if (window.confirm('Are you sure you want to leave the game?')) {
+      if (socket && !isSolo) {
+        socket.emit('leave-game', { roomId });
+      }
       localStorage.removeItem('currentRoom');
       navigate('/Home');
     }
@@ -283,6 +429,11 @@ const GameBoard = () => {
           </button>
           <div className="round-indicator">Round {currentRound} / {totalRounds}</div>
           <div className="game-timer-clock">{formatTime(timeLeft)}</div>
+          {!isSolo && (
+            <span className="online-status">
+              {isConnected ? '🟢 Live' : '🔴 Connecting...'}
+            </span>
+          )}
         </header>
 
         {/* ---------------- SCREEN 3: ROUND RESULTS STATE (Full Screen Panel) ---------------- */}
@@ -336,6 +487,11 @@ const GameBoard = () => {
                   onMouseLeave={stopDrawing}
                   className={`game-drawing-surface ${!isCurrentArtist ? 'view-only' : ''}`}
                 />
+                {!isCurrentArtist && !isSolo && (
+                  <div className="view-only-overlay">
+                    <span>🎨 {currentArtist?.name} is drawing...</span>
+                  </div>
+                )}
               </div>
 
               {/* Tools display under canvas only if current user is the drawer */}

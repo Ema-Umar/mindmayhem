@@ -47,12 +47,24 @@ const NotificationsPage = () => {
           if (notification.type === 'friend_request' && notification.data?.requestId) {
             try {
               const checkRes = await axios.get(`${API_URL}/friends/request/${notification.data.requestId}`, authHeaders());
-              if (checkRes.data.exists) {
+              if (checkRes.data.exists && checkRes.data.status === 'pending') {
+                // Only show pending requests
                 filteredNotifications.push(notification);
+              } else {
+                // Request is accepted/rejected, delete the notification from DB
+                try {
+                  await axios.delete(`${API_URL}/notifications/${notification._id || notification.id}`, authHeaders());
+                } catch (deleteError) {
+                  console.error('Error deleting notification:', deleteError);
+                }
               }
             } catch (error) {
-              // Request doesn't exist, skip
-              console.log('Skipping notification for non-existent request');
+              // Request doesn't exist, delete notification
+              try {
+                await axios.delete(`${API_URL}/notifications/${notification._id || notification.id}`, authHeaders());
+              } catch (deleteError) {
+                console.error('Error deleting notification:', deleteError);
+              }
             }
           } else {
             filteredNotifications.push(notification);
@@ -88,7 +100,7 @@ const NotificationsPage = () => {
     };
   }, [loadNotifications]);
 
-  // Mark notification as read - SINGLE DEFINITION
+  // Mark notification as read
   const markRead = async (id) => {
     try {
       await axios.post(`${API_URL}/notifications/${id}/read`, {}, authHeaders());
@@ -100,8 +112,8 @@ const NotificationsPage = () => {
         if (requestId) {
           try {
             const response = await axios.get(`${API_URL}/friends/request/${requestId}`, authHeaders());
-            if (!response.data.exists) {
-              // Request no longer exists, delete notification
+            if (!response.data.exists || response.data.status !== 'pending') {
+              // Request no longer exists or not pending, delete notification
               await axios.delete(`${API_URL}/notifications/${id}`, authHeaders());
               setNotifications(prev => prev.filter(n => (n._id || n.id) !== id));
               return;
@@ -129,19 +141,28 @@ const NotificationsPage = () => {
     }
   };
 
-  // Respond to friend request
+  // Respond to friend request - FIXED
   const respondToFriendRequest = async (notification, accept) => {
     const requestId = notification.data?.requestId;
+    const notificationId = notification._id || notification.id;
     if (!requestId) return;
     
     try {
+      // Accept or reject the friend request
       await axios.post(`${API_URL}/friends/${accept ? 'accept' : 'reject'}/${requestId}`, {}, authHeaders());
       setHandledRequestIds(prev => new Set(prev).add(requestId));
       
-      // Remove the notification from the list
-      setNotifications(prev => prev.filter(n => (n._id || n.id) !== (notification._id || notification.id)));
+      // DELETE the notification from the database
+      try {
+        await axios.delete(`${API_URL}/notifications/${notificationId}`, authHeaders());
+      } catch (deleteError) {
+        console.error('Error deleting notification:', deleteError);
+      }
       
-      // Refresh notifications to get updated list
+      // Remove the notification from the frontend list
+      setNotifications(prev => prev.filter(n => (n._id || n.id) !== notificationId));
+      
+      // Reload notifications to ensure consistency
       await loadNotifications();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to respond to request');
