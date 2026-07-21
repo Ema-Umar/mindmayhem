@@ -29,7 +29,7 @@ app.use('/uploads', express.static('uploads'));
 // ============================================
 // DATABASE CONNECTION
 // ============================================
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/mindmayhem')
+mongoose.connect('mongodb://new_atlas_provider:MindMayHem2024@ac-p5vlpuu-shard-00-00.eey0e9z.mongodb.net:27017,ac-p5vlpuu-shard-00-01.eey0e9z.mongodb.net:27017,ac-p5vlpuu-shard-00-02.eey0e9z.mongodb.net:27017/?ssl=true&replicaSet=atlas-4cfrio-shard-0&authSource=admin&appName=mindmayhem-cluster')
 .then(() => console.log('✅ MongoDB Connected Successfully'))
 .catch(err => {
   console.error('❌ MongoDB Connection Error:', err);
