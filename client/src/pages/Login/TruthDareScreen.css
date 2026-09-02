@@ -1,0 +1,122 @@
+.td-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.75rem;
+  padding: 2.5rem 1.5rem;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.td-trophy-icon {
+  color: #eab308;
+}
+
+.td-title {
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.td-subtitle {
+  opacity: 0.75;
+  margin: 0 0 0.5rem;
+}
+
+.td-challenge-card {
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.35);
+  border-radius: 12px;
+  padding: 1.25rem;
+  width: 100%;
+  color: #e5e5f5;
+}
+
+.td-challenge-text {
+  font-style: italic;
+  margin-top: 0.5rem;
+}
+
+.td-challenge-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.td-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  text-align: left;
+}
+
+.td-form-row select,
+.td-challenge-form textarea {
+  background: #1a1a2e;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #fff;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.95rem;
+}
+
+.td-challenge-form textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
+.td-type-toggle {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.td-type-btn {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.td-type-btn.active {
+  background: #00d4ff;
+  color: #0a0a1a;
+  border-color: #00d4ff;
+  font-weight: 600;
+}
+
+.td-send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.65rem;
+  border-radius: 8px;
+  border: none;
+  background: #00d4ff;
+  color: #0a0a1a;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.td-continue-btn {
+  margin-top: 0.5rem;
+  padding: 0.65rem 1.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.td-continue-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}

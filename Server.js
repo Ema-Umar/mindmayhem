@@ -20,6 +20,21 @@ const io = socketIo(server, {
   }
 });
 
+// Verify the JWT sent from socket.js's `auth: { token }` on every connection
+io.use((socket, next) => {
+  try {
+    const token = socket.handshake.auth?.token;
+    if (!token) return next(new Error('Authentication required'));
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    socket.userId = decoded.userId;
+    next();
+  } catch (err) {
+    next(new Error('Authentication failed'));
+  }
+});
+// Tracks each user's open sockets (handles multiple tabs/devices per person)
+const onlineSockets = new Map(); // userId -> Set of socket.id
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -730,7 +745,7 @@ app.post('/api/friends/request/:userId', authMiddleware, async (req, res) => {
     });
     await notification.save();
 
-    io.to(friendId).emit('notification', notification);
+    io.to(`user_${friendId}`).emit('notification', notification);
 
     res.json({
       success: true,
@@ -741,7 +756,17 @@ app.post('/api/friends/request/:userId', authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to send friend request' });
   }
 });
-
+app.get('/api/users/online', authMiddleware, async (req, res) => {
+  try {
+    const count = await User.countDocuments({ isOnline: true });
+    const users = await User.find({ isOnline: true, _id: { $ne: req.userId } })
+      .select('username avatar')
+      .limit(50);
+    res.json({ success: true, count, users });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to get online users' });
+  }
+});
 // Accept Friend Request
 app.post('/api/friends/accept/:requestId', authMiddleware, async (req, res) => {
   try {
@@ -769,7 +794,7 @@ app.post('/api/friends/accept/:requestId', authMiddleware, async (req, res) => {
     });
     await notification.save();
 
-    io.to(request.user.toString()).emit('notification', notification);
+io.to(`user_${request.user.toString()}`).emit('notification', notification);
 
     res.json({
       success: true,
@@ -1261,13 +1286,9 @@ app.post('/api/rooms/:roomId/join', authMiddleware, async (req, res) => {
       });
     }
 
-    if (room.players.some(p => p.id.toString() === userId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Already in room'
-      });
-    }
-
+  if (room.players.some(p => p.id.toString() === userId)) {
+  return res.status(400).json({ success: false, message: 'Already in room' });
+}
     room.players.push({
       id: userId,
       username: user.username,
@@ -1295,7 +1316,59 @@ app.post('/api/rooms/:roomId/join', authMiddleware, async (req, res) => {
     });
   }
 });
+app.post('/api/rooms/:roomId/ready', authMiddleware, async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const userId = req.userId;
+    const { isReady } = req.body;
 
+    const room = await Room.findById(roomId);
+    if (!room) {
+      return res.status(404).json({ success: false, message: 'Room not found' });
+    }
+
+    const player = room.players.find(p => p.id.toString() === userId);
+    if (!player) {
+      return res.status(403).json({ success: false, message: 'Not in this room' });
+    }
+
+    player.isReady = !!isReady;
+    await room.save();
+
+    res.json({ success: true, isReady: player.isReady });
+  } catch (error) {
+    console.error('Toggle ready error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update ready status' });
+  }
+});
+// Same as /leave, but reachable via sendBeacon (no custom headers allowed on unload)
+app.post('/api/rooms/:roomId/leave-beacon', express.json(), async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).end();
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const userId = decoded.userId;
+
+    const room = await Room.findById(req.params.roomId);
+    if (!room) return res.status(404).end();
+
+    room.players = room.players.filter(p => p.id.toString() !== userId);
+    if (room.host.toString() === userId) {
+      if (room.players.length > 0) {
+        room.host = room.players[0].id;
+        room.players[0].isHost = true;
+      } else {
+        await Room.findByIdAndDelete(req.params.roomId);
+        return res.status(204).end();
+      }
+    }
+    await room.save();
+    res.status(204).end();
+  } catch (error) {
+    console.error('Leave-beacon error:', error);
+    res.status(500).end();
+  }
+});
 // Leave Room
 app.post('/api/rooms/:roomId/leave', authMiddleware, async (req, res) => {
   try {
@@ -1342,6 +1415,8 @@ app.post('/api/rooms/:roomId/leave', authMiddleware, async (req, res) => {
 });
 
 // Start Game
+// Start Game — any player in the room can start it once everyone's ready
+// (not just the host, since the host may not be online/available)
 app.post('/api/rooms/:roomId/start', authMiddleware, async (req, res) => {
   try {
     const { roomId } = req.params;
@@ -1349,50 +1424,31 @@ app.post('/api/rooms/:roomId/start', authMiddleware, async (req, res) => {
 
     const room = await Room.findById(roomId);
     if (!room) {
-      return res.status(404).json({
-        success: false,
-        message: 'Room not found'
-      });
+      return res.status(404).json({ success: false, message: 'Room not found' });
     }
 
-    if (room.host.toString() !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: 'Only the host can start the game'
-      });
+    const isPlayerInRoom = room.players.some(p => p.id.toString() === userId);
+    if (!isPlayerInRoom) {
+      return res.status(403).json({ success: false, message: 'You must join the room before starting it' });
     }
 
     if (room.players.length < 2) {
-      return res.status(400).json({
-        success: false,
-        message: 'Need at least 2 players to start'
-      });
+      return res.status(400).json({ success: false, message: 'Need at least 2 players to start' });
     }
 
     const allReady = room.players.every(p => p.isReady === true);
     if (!allReady) {
-      return res.status(400).json({
-        success: false,
-        message: 'Not all players are ready'
-      });
+      return res.status(400).json({ success: false, message: 'Not all players are ready' });
     }
 
     room.status = 'playing';
     room.startedAt = new Date();
     await room.save();
 
-    res.json({
-      success: true,
-      message: 'Game started successfully',
-      room: room
-    });
-
+    res.json({ success: true, message: 'Game started successfully', room });
   } catch (error) {
     console.error('Start game error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to start game'
-    });
+    res.status(500).json({ success: false, message: 'Failed to start game' });
   }
 });
 
@@ -1407,8 +1463,10 @@ app.post('/api/rooms/:roomId/invite/:friendId', authMiddleware, async (req, res)
       return res.status(404).json({ success: false, message: 'Room not found' });
     }
 
-    if (room.host.toString() !== userId) {
-      return res.status(403).json({ success: false, message: 'Only the host can invite' });
+    // Any player already in the room can invite — not just the host
+    const isPlayerInRoom = room.players.some(p => p.id.toString() === userId);
+    if (!isPlayerInRoom) {
+      return res.status(403).json({ success: false, message: 'You must be in the room to invite others' });
     }
 
     const friend = await User.findById(friendId);
@@ -1424,46 +1482,302 @@ app.post('/api/rooms/:roomId/invite/:friendId', authMiddleware, async (req, res)
     });
     await notification.save();
 
-    io.to(friendId).emit('notification', notification);
+    io.to(`user_${friendId}`).emit('notification', notification);
 
-    res.json({
-      success: true,
-      message: 'Invitation sent'
-    });
+    res.json({ success: true, message: 'Invitation sent' });
   } catch (error) {
     console.error('Invite friend error:', error);
     res.status(500).json({ success: false, message: 'Failed to send invitation' });
   }
 });
 
+ 
+// In-memory per-room game state. NOTE: resets if the server restarts —
+// for production this should live in Redis or similar so long games
+// survive a redeploy. Fine for local testing.
+const ROUND_DURATION = 60; // seconds — MUST match ROUND_DURATION in GamePlay.jsx
+const gameRooms = new Map(); // roomId -> gameState
+ 
+const WORDS_BY_DIFFICULTY = {
+  easy: ['CAT', 'DOG', 'HOUSE', 'CAR', 'APPLE', 'TREE', 'SUN', 'BOOK', 'PHONE', 'BALLOON', 'FISH', 'STAR']
+};
+const getWordChoices = (count = 3) => {
+  const pool = [...WORDS_BY_DIFFICULTY.easy];
+  const choices = [];
+  while (choices.length < count && pool.length > 0) {
+    const idx = Math.floor(Math.random() * pool.length);
+    choices.push(pool.splice(idx, 1)[0]);
+  }
+  return choices;
+};
+ 
+const normalizeGuess = (text) =>
+  (text || '').toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
+ 
+const guessMatches = (guess, answer) => {
+  const g = normalizeGuess(guess);
+  const a = normalizeGuess(answer);
+  if (!g || !a) return false;
+  if (g === a) return true;
+  if (g === a + 's' || g + 's' === a) return true;
+  return false;
+};
+ 
+// Builds/fetches the authoritative state for a room, seeded from the real
+// Room document (so player list + round count come from the DB, not the client).
+const getOrCreateGameState = async (roomId) => {
+  if (gameRooms.has(roomId)) return gameRooms.get(roomId);
+ 
+  const room = await Room.findById(roomId).populate('players.id', 'username avatar');
+  if (!room) return null;
+ 
+  const artistOrder = room.players.map(p => (p.id?._id || p.id).toString());
+ 
+  const state = {
+    roomId,
+    players: room.players.map(p => ({
+      id: (p.id?._id || p.id).toString(),
+      name: p.username || p.id?.username || 'Player'
+    })),
+    totalRounds: room.rounds || 5,
+    currentRound: 1,
+    artistOrder,
+    artistIndex: 0,
+    currentArtistId: artistOrder[0] || null,
+    phase: 'wordSelect', // 'wordSelect' | 'playing' | 'roundEnd' | 'gameOver'
+    word: null,
+    roundStartAt: null,
+    scores: {},
+    roundScores: {},
+    correctGuessers: [],
+    tokens: {},
+    timeoutHandle: null
+  };
+  state.players.forEach(p => { state.scores[p.id] = 0; state.tokens[p.id] = 0; });
+ 
+  gameRooms.set(roomId, state);
+  return state;
+};
+ 
+// What we broadcast to everyone — deliberately EXCLUDES `word`.
+// Only the current artist's socket gets the word, sent separately.
+const publicState = (state) => ({
+  roomId: state.roomId,
+  players: state.players,
+  totalRounds: state.totalRounds,
+  currentRound: state.currentRound,
+  currentArtistId: state.currentArtistId,
+  phase: state.phase,
+  roundStartAt: state.roundStartAt,
+  scores: state.scores,
+  roundScores: state.roundScores,
+  correctGuessers: state.correctGuessers,
+  tokens: state.tokens
+});
+ 
+const endRound = (io, state, reason) => {
+  if (state.phase === 'roundEnd' || state.phase === 'gameOver') return;
+  if (state.timeoutHandle) { clearTimeout(state.timeoutHandle); state.timeoutHandle = null; }
+ 
+  // Drawer points = average of what correct guessers scored (consolation floor if nobody guessed)
+  const guesserScores = state.correctGuessers.map(id => state.roundScores[id] || 0);
+  let drawerPts;
+  if (guesserScores.length > 0) {
+    drawerPts = Math.round(guesserScores.reduce((a, b) => a + b, 0) / guesserScores.length);
+    drawerPts = Math.min(drawerPts, 800);
+    const nonArtistCount = state.players.length - 1;
+    if (nonArtistCount > 0 && state.correctGuessers.length === nonArtistCount) drawerPts += 300; // perfect bonus
+  } else {
+    drawerPts = 100;
+  }
+  if (state.currentArtistId) {
+    state.scores[state.currentArtistId] = (state.scores[state.currentArtistId] || 0) + drawerPts;
+    state.roundScores[state.currentArtistId] = (state.roundScores[state.currentArtistId] || 0) + drawerPts;
+  }
+ 
+  // Round winner (highest roundScore) earns a reward token
+  let winnerId = null, winnerScore = -1;
+  Object.entries(state.roundScores).forEach(([pid, pts]) => {
+    if (pts > winnerScore) { winnerScore = pts; winnerId = pid; }
+  });
+  if (winnerId && winnerScore > 0) {
+    state.tokens[winnerId] = (state.tokens[winnerId] || 0) + 1;
+  }
+ 
+  state.phase = 'roundEnd';
+  io.to(`game_${state.roomId}`).emit('round-ended', {
+    ...publicState(state),
+    word: state.word, // safe to reveal now — round is over
+    reason,
+    roundWinnerId: winnerId
+  });
+};
+ 
+
 // ============================================
 // SOCKET.IO CONNECTION HANDLING
 // ============================================
-io.on('connection', (socket) => {
-  console.log('🟢 Client connected:', socket.id);
+io.on('connection', async (socket) => {
+  const userId = socket.userId; // set by the auth middleware above
+  console.log('🟢 Client connected:', socket.id, 'user:', userId);
 
-  socket.on('userOnline', async (userId) => {
+  socket.join(`user_${userId}`);
+
+  if (!onlineSockets.has(userId)) onlineSockets.set(userId, new Set());
+  const wasOffline = onlineSockets.get(userId).size === 0;
+  onlineSockets.get(userId).add(socket.id);
+
+  if (wasOffline) {
     try {
-      await User.findByIdAndUpdate(userId, { isOnline: true });
-      socket.userId = userId;
-      socket.join(`user_${userId}`);
+      await User.findByIdAndUpdate(userId, { isOnline: true, lastSeen: new Date() });
       socket.broadcast.emit('friend-online', userId);
     } catch (error) {
       console.error('User online error:', error);
     }
-  });
+  }
 
   socket.on('disconnect', async () => {
     console.log('🔴 Client disconnected:', socket.id);
-    if (socket.userId) {
-      try {
-        await User.findByIdAndUpdate(socket.userId, { isOnline: false });
-        socket.broadcast.emit('friend-offline', socket.userId);
-      } catch (error) {
-        console.error('User offline error:', error);
+    const set = onlineSockets.get(userId);
+    if (set) {
+      set.delete(socket.id);
+      if (set.size === 0) {
+        onlineSockets.delete(userId);
+        try {
+          await User.findByIdAndUpdate(userId, { isOnline: false, lastSeen: new Date() });
+          socket.broadcast.emit('friend-offline', userId);
+        } catch (error) {
+          console.error('User offline error:', error);
+        }
       }
     }
   });
+
+  
+socket.on('join-game-room', async ({ roomId }) => {
+  try {
+    socket.join(`game_${roomId}`);
+    socket.currentGameRoomId = roomId;
+ 
+    const state = await getOrCreateGameState(roomId);
+    if (!state) return;
+ 
+    // Send the joiner the CURRENT state — this is what makes a mid-game
+    // join land on round 2/3/etc instead of restarting at round 1.
+    const isArtist = state.currentArtistId === userId;
+    socket.emit('game-state-sync', {
+      ...publicState(state),
+      wordChoices: (isArtist && state.phase === 'wordSelect') ? getWordChoices() : undefined,
+      word: isArtist ? state.word : undefined
+    });
+ 
+    socket.to(`game_${roomId}`).emit('player-joined-game', { userId });
+  } catch (err) {
+    console.error('join-game-room error:', err);
+  }
+});
+ 
+socket.on('select-word', ({ roomId, word }) => {
+  const state = gameRooms.get(roomId);
+  if (!state || state.currentArtistId !== userId || state.phase !== 'wordSelect') return;
+ 
+  state.word = word;
+  state.phase = 'playing';
+  state.roundStartAt = Date.now();
+  state.correctGuessers = [];
+  state.roundScores = {};
+ 
+  io.to(`game_${roomId}`).emit('round-started', publicState(state));
+ 
+  if (state.timeoutHandle) clearTimeout(state.timeoutHandle);
+  state.timeoutHandle = setTimeout(() => endRound(io, state, 'timeout'), ROUND_DURATION * 1000);
+});
+ 
+socket.on('submit-guess', ({ roomId, guess }) => {
+  const state = gameRooms.get(roomId);
+  if (!state || state.phase !== 'playing') return;
+  if (userId === state.currentArtistId) return; // drawer can never score a guess
+  if (state.correctGuessers.includes(userId)) return; // already guessed correctly this round
+ 
+  const player = state.players.find(p => p.id === userId);
+  const isCorrect = guessMatches(guess, state.word || '');
+ 
+  if (!isCorrect) {
+    io.to(`game_${roomId}`).emit('guess-result', {
+      playerId: userId, playerName: player?.name, guess, isCorrect: false
+    });
+    return;
+  }
+ 
+  const elapsed = Math.floor((Date.now() - state.roundStartAt) / 1000);
+  const remaining = Math.max(ROUND_DURATION - elapsed, 0);
+  let base = Math.round((1000 * remaining) / ROUND_DURATION);
+  base = Math.max(base, 100);
+  let bonus = 0;
+  if (state.correctGuessers.length === 0) bonus += 200; // first guess
+  if (elapsed <= 10) bonus += 150; // fast guess
+  const total = base + bonus;
+ 
+  state.correctGuessers.push(userId);
+  state.scores[userId] = (state.scores[userId] || 0) + total;
+  state.roundScores[userId] = (state.roundScores[userId] || 0) + total;
+ 
+  io.to(`game_${roomId}`).emit('guess-result', {
+    playerId: userId, playerName: player?.name, guess: state.word, isCorrect: true, points: total
+  });
+ 
+  const nonArtistCount = state.players.length - 1;
+  if (state.correctGuessers.length >= nonArtistCount) {
+    endRound(io, state, 'correct');
+  }
+});
+ 
+socket.on('drawer-chat', ({ roomId, message }) => {
+  const state = gameRooms.get(roomId);
+  if (!state) return;
+  const player = state.players.find(p => p.id === userId);
+  io.to(`game_${roomId}`).emit('chat-message', { playerId: userId, playerName: player?.name, message });
+});
+ 
+// Relays drawing strokes to everyone else in the room (unchanged behavior,
+// just moved under the authenticated `userId` naming for consistency)
+socket.on('drawing-data', ({ roomId, ...strokeData }) => {
+  socket.to(`game_${roomId}`).emit('drawing-data', strokeData);
+});
+ 
+socket.on('request-next-round', ({ roomId }) => {
+  const state = gameRooms.get(roomId);
+  if (!state || state.phase === 'gameOver') return;
+ 
+  if (state.currentRound >= state.totalRounds) {
+    state.phase = 'gameOver';
+    io.to(`game_${roomId}`).emit('game-over', publicState(state));
+    gameRooms.delete(roomId); // drop in-memory state once the game is over
+    return;
+  }
+ 
+  state.currentRound += 1;
+  state.artistIndex = (state.artistIndex + 1) % state.artistOrder.length;
+  state.currentArtistId = state.artistOrder[state.artistIndex];
+  state.phase = 'wordSelect';
+  state.word = null;
+  state.roundStartAt = null;
+  state.correctGuessers = [];
+  state.roundScores = {};
+ 
+  // Only the new artist's socket(s) get word choices — send per-player
+  state.players.forEach(p => {
+    io.to(`user_${p.id}`).emit('next-round-ready', {
+      ...publicState(state),
+      wordChoices: p.id === state.currentArtistId ? getWordChoices() : undefined
+    });
+  });
+});
+ 
+socket.on('challenge-sent', ({ roomId, targetId, type, text }) => {
+  io.to(`game_${roomId}`).emit('challenge-sent', { fromId: userId, targetId, type, text });
+});
+ 
 });
 
 // ============================================

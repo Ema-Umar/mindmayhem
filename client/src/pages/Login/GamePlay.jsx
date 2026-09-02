@@ -3,188 +3,265 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Pencil, Eraser, Trash2, Send, Trophy, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import { connectSocket, getSocket } from '../../socket';
+import TruthDareScreen from './TruthDareScreen';
 import './GamePlay.css';
 
-const GameBoard = () => {
+const ROUND_DURATION = 60; // MUST match ROUND_DURATION in Server.js
+const MIN_GUESS_SCORE = 100;
+const FIRST_GUESS_BONUS = 200;
+const FAST_GUESS_WINDOW = 10;
+const FAST_GUESS_BONUS = 150;
+
+const WORDS_BY_DIFFICULTY = {
+  easy: ['CAT', 'DOG', 'HOUSE', 'CAR', 'APPLE', 'TREE', 'SUN', 'BOOK', 'PHONE', 'BALLOON', 'FISH', 'STAR']
+};
+const getWordChoices = (count = 3) => {
+  const pool = [...WORDS_BY_DIFFICULTY.easy];
+  const choices = [];
+  while (choices.length < count && pool.length > 0) {
+    const idx = Math.floor(Math.random() * pool.length);
+    choices.push(pool.splice(idx, 1)[0]);
+  }
+  return choices;
+};
+
+const normalizeGuess = (text) =>
+  text.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
+const guessMatches = (guess, answer) => {
+  const g = normalizeGuess(guess);
+  const a = normalizeGuess(answer);
+  if (g === a) return true;
+  if (g === a + 's' || g + 's' === a) return true;
+  return false;
+};
+
+const API_URL = 'http://localhost:5000/api';
+
+const GamePlay = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { roomId } = useParams();
-  
+
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState('pencil');
   const [color, setColor] = useState('#ef4444');
-  const [timeLeft, setTimeLeft] = useState(80);
+  const [timeLeft, setTimeLeft] = useState(ROUND_DURATION);
   const [guessText, setGuessText] = useState('');
   const [players, setPlayers] = useState([]);
   const [currentRound, setCurrentRound] = useState(1);
   const [totalRounds, setTotalRounds] = useState(5);
   const [isSolo, setIsSolo] = useState(true);
   const [wordToDraw, setWordToDraw] = useState('');
-  const [currentArtist, setCurrentArtist] = useState(null);
-  const [isArtist, setIsArtist] = useState(true);
+  const [wordChoices, setWordChoices] = useState([]);
+  const [currentArtistId, setCurrentArtistId] = useState(null);
   const [scores, setScores] = useState({});
+  const [roundScores, setRoundScores] = useState({});
+  const [correctGuessers, setCorrectGuessers] = useState([]);
+  const [tokens, setTokens] = useState({});
   const [guesses, setGuesses] = useState([]);
-  const [gameState, setGameState] = useState('playing');
+  // gameState: 'connecting' | 'wordSelect' | 'playing' | 'roundEnd' | 'reward' | 'gameOver'
+  const [gameState, setGameState] = useState('connecting');
   const [roundEndMessage, setRoundEndMessage] = useState('');
-  const [artistIndex, setArtistIndex] = useState(0);
+  const [roundWinnerId, setRoundWinnerId] = useState(null);
+  // Overall game winner (highest total score once ALL rounds are done) —
+  // this is who gets to hand out the truth-or-dare, NOT the per-round winner.
+  const [gameWinnerId, setGameWinnerId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
 
-  const API_URL = 'http://localhost:5000/api';
-  const wordList = [
-    'BALLOON', 'DOG', 'CAT', 'SUN', 'HOUSE', 'FLOWER', 'TREE', 'CAR', 'BIRD',
-    'FISH', 'STAR', 'MOON', 'APPLE', 'BANANA', 'PIZZA', 'HAPPY', 'SAD', 'ANGRY',
-    'RUN', 'SWIM', 'FLY', 'JUMP', 'DANCE', 'SING', 'LAUGH', 'CRY', 'THINK',
-    'LOVE', 'HOPE', 'DREAM', 'BRAVE', 'STRONG', 'SMART', 'KIND', 'FAST', 'SLOW',
-    'BIG', 'SMALL', 'TALL', 'SHORT', 'WIDE', 'NARROW', 'DEEP', 'SHALLOW'
-  ];
+  const myUserRef = useRef(JSON.parse(localStorage.getItem('user') || '{}'));
+  const myId = myUserRef.current.id || myUserRef.current._id;
+  const artistIndexRef = useRef(0); // solo-only bookkeeping
 
-  const getRandomWord = () => wordList[Math.floor(Math.random() * wordList.length)];
+  const isArtist = currentArtistId === myId;
+  const me = players.find(p => (p.id === myId));
+  const alreadyGuessed = correctGuessers.includes(myId);
 
   // ============================================
-  // SOCKET.IO SETUP - REAL-TIME
+  // SOCKET SETUP
   // ============================================
   useEffect(() => {
     const socketInstance = connectSocket();
     setSocket(socketInstance);
+    if (!socketInstance) { setLoading(false); return; }
 
-    if (socketInstance) {
-      socketInstance.on('connect', () => {
-        console.log('✅ Socket connected for game');
-        setIsConnected(true);
+    socketInstance.on('connect', () => setIsConnected(true));
+    socketInstance.on('disconnect', () => setIsConnected(false));
+
+    // Full state sync — sent once when we join, also covers mid-game joins
+    socketInstance.on('game-state-sync', (state) => {
+      applyServerState(state);
+      if (state.wordChoices) setWordChoices(state.wordChoices);
+      if (state.word) setWordToDraw(state.word);
+      setLoading(false);
+    });
+
+    socketInstance.on('round-started', (state) => {
+      applyServerState(state);
+      setGuesses([]);
+      setRoundEndMessage('');
+      clearCanvas();
+    });
+
+    socketInstance.on('guess-result', (g) => {
+      setGuesses(prev => [{ player: g.playerName, guess: g.isCorrect ? g.guess : g.guess, isCorrect: g.isCorrect, points: g.points }, ...prev]);
+      if (g.isCorrect) {
+        setCorrectGuessers(prev => prev.includes(g.playerId) ? prev : [...prev, g.playerId]);
+        setRoundEndMessage(`🎉 ${g.playerName} guessed it! +${g.points} points!`);
+      }
+    });
+
+    socketInstance.on('chat-message', (data) => {
+      setGuesses(prev => [{ player: data.playerName, guess: data.message, isCorrect: false, isChat: true }, ...prev]);
+    });
+
+    socketInstance.on('drawing-data', (data) => drawOnCanvas(data));
+
+    socketInstance.on('round-ended', (state) => {
+      applyServerState(state);
+      setWordToDraw(state.word);
+      setRoundWinnerId(state.roundWinnerId);
+      if (state.reason === 'timeout') setRoundEndMessage(`⏰ Time is up! The word was ${state.word}`);
+      setGameState('roundEnd');
+    });
+
+    socketInstance.on('next-round-ready', (state) => {
+      applyServerState(state);
+      setWordToDraw('');
+      if (state.wordChoices) setWordChoices(state.wordChoices);
+      setGuesses([]);
+      setRoundEndMessage('');
+      setRoundWinnerId(null);
+      clearCanvas();
+    });
+
+    // The FINAL round just ended and the server has already deleted its
+    // in-memory state for this room. Figure out the overall winner from
+    // the final scores in this payload (NOT the per-round roundWinnerId),
+    // then — for multiplayer games with 2+ players — let them do one
+    // truth-or-dare before showing the final results. Solo games and
+    // games that somehow only have 1 player skip straight to results.
+    socketInstance.on('game-over', (state) => {
+      applyServerState(state);
+
+      const finalScores = state.scores || {};
+      let winnerId = null;
+      let winnerScore = -1;
+      Object.entries(finalScores).forEach(([pid, pts]) => {
+        if (pts > winnerScore) {
+          winnerScore = pts;
+          winnerId = pid;
+        }
       });
+      setGameWinnerId(winnerId);
 
-      // Receive real-time drawing data
-      socketInstance.on('drawing-data', (data) => {
-        drawOnCanvas(data);
-      });
+      updateGameStats((finalScores[myId] || 0) > 0);
 
-      // Receive real-time guesses
-      socketInstance.on('new-guess', (guessData) => {
-        setGuesses(prev => [guessData, ...prev]);
-      });
-
-      // Receive round updates
-      socketInstance.on('round-update', (data) => {
-        setCurrentRound(data.round);
-        setWordToDraw(data.word);
-        setCurrentArtist(data.artist);
-        setIsArtist(data.artist.isYou || false);
-        setTimeLeft(80);
-        setGuesses([]);
-        setGameState('playing');
-        clearCanvas();
-      });
-
-      // Receive game over
-      socketInstance.on('game-over', (data) => {
+      if ((state.players?.length || 0) >= 2) {
+        setGameState('reward');
+      } else {
         setGameState('gameOver');
-        setScores(data.scores);
-      });
+      }
+    });
 
-      // Receive score updates
-      socketInstance.on('score-update', (data) => {
-        setScores(prev => ({
-          ...prev,
-          [data.playerId]: data.newScore
-        }));
-      });
+    socketInstance.on('player-joined-game', () => {
+      // Lightweight — a full roster refresh isn't critical mid-round;
+      // players list already came from game-state-sync.
+    });
 
-      return () => {
-        socketInstance.off('drawing-data');
-        socketInstance.off('new-guess');
-        socketInstance.off('round-update');
-        socketInstance.off('game-over');
-        socketInstance.off('score-update');
-      };
-    }
+    return () => {
+      socketInstance.off('connect');
+      socketInstance.off('disconnect');
+      socketInstance.off('game-state-sync');
+      socketInstance.off('round-started');
+      socketInstance.off('guess-result');
+      socketInstance.off('chat-message');
+      socketInstance.off('drawing-data');
+      socketInstance.off('round-ended');
+      socketInstance.off('next-round-ready');
+      socketInstance.off('game-over');
+      socketInstance.off('player-joined-game');
+    };
   }, []);
 
+  // Maps the server's `phase` field onto our local gameState, and pulls in
+  // every shared field in one place so every event handler stays tiny.
+  const applyServerState = (state) => {
+    setPlayers(prev => {
+      // keep any locally-known extra fields (isYou) merged with server's list
+      return (state.players || []).map(p => ({ ...p, isYou: p.id === myId }));
+    });
+    setTotalRounds(state.totalRounds);
+    setCurrentRound(state.currentRound);
+    setCurrentArtistId(state.currentArtistId);
+    setScores(state.scores || {});
+    setRoundScores(state.roundScores || {});
+    setCorrectGuessers(state.correctGuessers || []);
+    setTokens(state.tokens || {});
+    if (state.roundStartAt) {
+      const elapsed = Math.floor((Date.now() - state.roundStartAt) / 1000);
+      setTimeLeft(Math.max(ROUND_DURATION - elapsed, 0));
+    } else {
+      setTimeLeft(ROUND_DURATION);
+    }
+    if (state.phase === 'wordSelect') setGameState('wordSelect');
+    else if (state.phase === 'playing') setGameState('playing');
+  };
+
   // ============================================
-  // LOAD GAME DATA
+  // LOAD GAME DATA / JOIN
   // ============================================
   useEffect(() => {
-    const loadGameData = async () => {
-      try {
-        setLoading(true);
-        const state = location.state || {};
-        const roomData = JSON.parse(localStorage.getItem('currentRoom') || 'null');
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        
-        let playerList = state.players || roomData?.players || [];
-        
-        if (playerList.length === 0) {
-          const userId = userData.id || userData._id || 'user_1';
-          playerList = [{
-            id: userId,
-            name: userData.username || 'You',
-            isHost: true,
-            isYou: true,
-            isReady: true
-          }];
-        }
+    const state = location.state || {};
+    const roomData = JSON.parse(localStorage.getItem('currentRoom') || 'null');
+    let playerList = state.players || roomData?.players || [];
 
-        const currentUserId = userData.id || userData._id;
-        playerList = playerList.map(p => ({
-          ...p,
-          isYou: p.id === currentUserId || p._id === currentUserId
-        }));
+    if (playerList.length === 0) {
+      playerList = [{ id: myId || 'user_1', name: myUserRef.current.username || 'You', isYou: true }];
+    }
+    const solo = state.isSolo || playerList.length === 1;
+    setIsSolo(solo);
 
-        const rounds = state.rounds || roomData?.rounds || 5;
-        const solo = state.isSolo || playerList.length === 1;
-
-        setPlayers(playerList);
-        setTotalRounds(rounds);
-        setIsSolo(solo);
-
-        const initialScores = {};
-        playerList.forEach(p => { initialScores[p.id] = 0; });
-        setScores(initialScores);
-
-        const firstArtist = playerList[0] || { id: 'artist_1', name: 'Artist' };
-        setArtistIndex(0);
-        setCurrentArtist(firstArtist);
-        setIsArtist(firstArtist.isYou || false);
-
-        const word = getRandomWord();
-        setWordToDraw(word);
-
-        // If not solo, join the room on socket
-        if (!solo && socket) {
-          socket.emit('join-game-room', { roomId, userId: currentUserId });
-        }
-
-      } catch (error) {
-        console.error('Error loading game:', error);
-      } finally {
-        setLoading(false);
+    if (solo) {
+      // ---- SOLO: everything stays local, exactly like single-player testing ----
+      const normalized = playerList.map(p => ({ ...p, id: p.id || p._id, isYou: true }));
+      setPlayers(normalized);
+      setTotalRounds(Number(state.rounds || roomData?.rounds || 5));
+      const initialScores = {}; const initialTokens = {};
+      normalized.forEach(p => { initialScores[p.id] = 0; initialTokens[p.id] = 0; });
+      setScores(initialScores);
+      setTokens(initialTokens);
+      setCurrentArtistId(normalized[0]?.id);
+      setWordChoices(getWordChoices());
+      setGameState('wordSelect');
+      setLoading(false);
+    } else {
+      // ---- MULTIPLAYER: ask the server for the authoritative state ----
+      const s = getSocket() || connectSocket();
+      if (s) {
+        if (s.connected) s.emit('join-game-room', { roomId });
+        else s.once('connect', () => s.emit('join-game-room', { roomId }));
       }
-    };
-    loadGameData();
+      // loading is cleared once 'game-state-sync' arrives
+    }
   }, [location.state, roomId]);
 
   // ============================================
-  // TIMER
+  // TIMER (client-side ticking only; server enforces the real timeout)
   // ============================================
   useEffect(() => {
-    if (timeLeft <= 0 || gameState !== 'playing') {
-      if (timeLeft <= 0 && gameState === 'playing') {
-        handleRoundEnd('timeout');
-        // Notify server about round end
-        if (socket && !isSolo) {
-          socket.emit('round-ended', { roomId, round: currentRound });
-        }
-      }
-      return;
+    if (gameState !== 'playing') return;
+    if (timeLeft <= 0) {
+      if (isSolo) handleSoloRoundEnd('timeout');
+      return; // in multiplayer, the server's own timer will emit 'round-ended'
     }
-    const interval = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
+    const interval = setInterval(() => setTimeLeft(prev => Math.max(prev - 1, 0)), 1000);
     return () => clearInterval(interval);
-  }, [timeLeft, gameState]);
+  }, [timeLeft, gameState, isSolo]);
 
   const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#10b981', '#06b6d4', '#6366f1', '#a855f7', '#ffffff'];
-
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -192,13 +269,24 @@ const GameBoard = () => {
   };
 
   // ============================================
-  // DRAWING HANDLERS WITH REAL-TIME SYNC
+  // WORD SELECTION
+  // ============================================
+  const handleWordChosen = (word) => {
+    setWordToDraw(word);
+    if (isSolo) {
+      setTimeLeft(ROUND_DURATION);
+      setGameState('playing');
+    } else if (socket) {
+      socket.emit('select-word', { roomId, word });
+      // gameState flips to 'playing' once 'round-started' comes back
+    }
+  };
+
+  // ============================================
+  // DRAWING
   // ============================================
   const startDrawing = (e) => {
-    if (!isArtist && !isSolo) {
-      alert('Only the artist can draw!');
-      return;
-    }
+    if (!isArtist && !isSolo) { alert('Only the artist can draw!'); return; }
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -218,7 +306,7 @@ const GameBoard = () => {
     const rect = canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) * (canvas.width / rect.width);
     const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-    
+
     ctx.lineTo(x, y);
     ctx.strokeStyle = tool === 'eraser' ? '#ffffff' : color;
     ctx.lineWidth = tool === 'eraser' ? 24 : 5;
@@ -226,24 +314,17 @@ const GameBoard = () => {
     ctx.lineJoin = 'round';
     ctx.stroke();
 
-    // Send drawing data to other players (REAL-TIME!)
     if (socket && !isSolo && isArtist) {
       socket.emit('drawing-data', {
-        roomId,
-        x, y,
-        color: ctx.strokeStyle,
-        width: ctx.lineWidth,
-        isEraser: tool === 'eraser'
+        roomId, x, y, color: ctx.strokeStyle, width: ctx.lineWidth, isEraser: tool === 'eraser'
       });
     }
   };
 
-  // Draw on canvas from received data (REAL-TIME!)
   const drawOnCanvas = (data) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    
     ctx.lineTo(data.x, data.y);
     ctx.strokeStyle = data.color;
     ctx.lineWidth = data.width;
@@ -255,100 +336,106 @@ const GameBoard = () => {
   };
 
   const stopDrawing = () => setIsDrawing(false);
-
   const clearCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
   };
 
   // ============================================
-  // GUESS HANDLING (REAL-TIME)
+  // GUESS / CHAT
   // ============================================
   const handleGuess = (e) => {
     e.preventDefault();
-    if (!guessText.trim() || (isArtist && !isSolo)) return;
-
-    const guess = guessText.trim().toUpperCase();
+    if (!guessText.trim()) return;
+    const rawText = guessText.trim();
     setGuessText('');
 
-    // Send guess to server
-    if (socket && !isSolo) {
-      socket.emit('guess', {
-        roomId,
-        playerId: players.find(p => p.isYou)?.id,
-        playerName: players.find(p => p.isYou)?.name,
-        guess,
-        wordToDraw
-      });
+    // Artist chats — never scored. Only skip this for a real multiplayer artist;
+    // in solo mode you ARE the artist but still need to be able to guess yourself.
+    if (isArtist && !isSolo) {
+      socket.emit('drawer-chat', { roomId, message: rawText });
+      return;
     }
 
-    if (guess === wordToDraw) {
-      const points = Math.max(10, Math.ceil(timeLeft / 5) * 2);
-      const guesserId = players.find(p => p.isYou)?.id;
-      
-      setScores(prev => ({
-        ...prev,
-        [guesserId]: (prev[guesserId] || 0) + points,
-        [currentArtist?.id]: (prev[currentArtist?.id] || 0) + 5
-      }));
+    if (alreadyGuessed) return;
 
-      setGuesses(prev => [{ player: 'You', guess: guess, isCorrect: true, points }, ...prev]);
-      setRoundEndMessage(`🎉 You guessed it! +${points} points!`);
-      handleRoundEnd('correct');
+    if (isSolo) {
+      handleSoloGuess(rawText);
+    } else if (socket) {
+      socket.emit('submit-guess', { roomId, guess: rawText });
+    }
+  };
+
+  // ---- SOLO-ONLY scoring path (server handles this for multiplayer) ----
+  const handleSoloGuess = (rawText) => {
+    if (guessMatches(rawText, wordToDraw)) {
+      const elapsed = ROUND_DURATION - timeLeft;
+      let base = Math.max(Math.round((1000 * timeLeft) / ROUND_DURATION), MIN_GUESS_SCORE);
+      let bonus = 0;
+      if (correctGuessers.length === 0) bonus += FIRST_GUESS_BONUS;
+      if (elapsed <= FAST_GUESS_WINDOW) bonus += FAST_GUESS_BONUS;
+      const total = base + bonus;
+
+      setScores(prev => ({ ...prev, [myId]: (prev[myId] || 0) + total }));
+      setRoundScores(prev => ({ ...prev, [myId]: (prev[myId] || 0) + total }));
+      setCorrectGuessers(prev => [...prev, myId]);
+      setGuesses(prev => [{ player: 'You', guess: wordToDraw, isCorrect: true, points: total }, ...prev]);
+      setRoundEndMessage(`🎉 You guessed it! +${total} points!`);
+      handleSoloRoundEnd('correct');
     } else {
-      const guesser = players.find(p => p.isYou);
-      setGuesses(prev => [{ player: guesser?.name || 'Player', guess: guess, isCorrect: false }, ...prev]);
+      setGuesses(prev => [{ player: 'You', guess: rawText, isCorrect: false }, ...prev]);
     }
   };
 
-  // ============================================
-  // ROUND MANAGEMENT (REAL-TIME)
-  // ============================================
-  const handleRoundEnd = (reason) => {
-    if (gameState === 'roundEnd' || gameState === 'gameOver') return;
+  const handleSoloRoundEnd = (reason) => {
+    if (gameState === 'roundEnd' || gameState === 'reward' || gameState === 'gameOver') return;
+
+    const guesserScores = correctGuessers.map(id => roundScores[id] || 0);
+    let drawerPts = guesserScores.length > 0
+      ? Math.min(Math.round(guesserScores.reduce((a, b) => a + b, 0) / guesserScores.length), 800)
+      : MIN_GUESS_SCORE;
+    setScores(prev => ({ ...prev, [myId]: (prev[myId] || 0) + drawerPts }));
+    setRoundScores(prev => ({ ...prev, [myId]: (prev[myId] || 0) + drawerPts }));
+
     setGameState('roundEnd');
-    if (reason === 'timeout') setRoundEndMessage(`⏰ Time is up!`);
+    if (reason === 'timeout') setRoundEndMessage(`⏰ Time is up! The word was ${wordToDraw}`);
   };
 
-  const startNewRound = () => {
-    const nextArtistIndex = (artistIndex + 1) % players.length;
-    setArtistIndex(nextArtistIndex);
-    const newArtist = players[nextArtistIndex] || players[0];
-    setCurrentArtist(newArtist);
-    setIsArtist(newArtist?.isYou || false);
-    const newWord = getRandomWord();
-    setWordToDraw(newWord);
-    setTimeLeft(80);
+  // ============================================
+  // ROUND / GAME PROGRESSION
+  // ============================================
+  const startSoloNewRound = () => {
+    setCurrentRound(prev => prev + 1);
+    setWordToDraw('');
+    setWordChoices(getWordChoices());
+    setTimeLeft(ROUND_DURATION);
     setGuesses([]);
+    setCorrectGuessers([]);
+    setRoundScores({});
     setRoundEndMessage('');
-    setGameState('playing');
+    setRoundWinnerId(null);
+    setGameState('wordSelect');
     clearCanvas();
   };
 
+  // Called by the "NEXT ROUND / SEE FINAL RESULTS" button after every
+  // single round (not just the last one). For multiplayer this always
+  // just asks the server to advance — the server itself decides whether
+  // to send back 'next-round-ready' (more rounds left) or 'game-over'
+  // (that was the last round). The truth-or-dare screen is triggered
+  // ONLY from the 'game-over' handler above, never from here.
   const handleNextRound = () => {
-    if (currentRound >= totalRounds) {
-      setGameState('gameOver');
-      const player = players.find(p => p.isYou);
-      updateGameStats(player && scores[player.id] > 0);
-      
-      // Notify server about game over
-      if (socket && !isSolo) {
-        socket.emit('game-ended', { roomId, scores });
+    if (isSolo) {
+      if (Number(currentRound) + 1 > Number(totalRounds)) {
+        setGameState('gameOver');
+        updateGameStats((scores[myId] || 0) > 0);
+        return;
       }
-    } else {
-      startNewRound();
-      
-      // Notify server about new round
-      if (socket && !isSolo) {
-        socket.emit('new-round', {
-          roomId,
-          round: currentRound + 1,
-          word: wordToDraw,
-          artist: currentArtist
-        });
-      }
+      startSoloNewRound();
+    } else if (socket) {
+      socket.emit('request-next-round', { roomId });
+      // server replies with either 'next-round-ready' or 'game-over'
     }
   };
 
@@ -356,10 +443,7 @@ const GameBoard = () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-      await axios.post(`${API_URL}/game/stats`, {
-        gamesPlayed: 1,
-        gamesWon: won ? 1 : 0
-      }, {
+      await axios.post(`${API_URL}/game/stats`, { gamesPlayed: 1, gamesWon: won ? 1 : 0 }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
     } catch (error) {
@@ -369,9 +453,6 @@ const GameBoard = () => {
 
   const handleLeaveGame = () => {
     if (window.confirm('Are you sure you want to leave the game?')) {
-      if (socket && !isSolo) {
-        socket.emit('leave-game', { roomId });
-      }
       localStorage.removeItem('currentRoom');
       navigate('/Home');
     }
@@ -380,14 +461,16 @@ const GameBoard = () => {
   if (loading) {
     return (
       <div className="gameplay-page-wrapper">
-        <div className="loading-state">Loading game...</div>
+        <div className="loading-state">
+          {isSolo ? 'Loading game...' : (isConnected ? 'Joining room...' : 'Connecting...')}
+        </div>
       </div>
     );
   }
 
-  const isCurrentArtist = isArtist || isSolo;
-
-  /* --- GAME OVER STATE --- */
+  // ============================================
+  // GAME OVER
+  // ============================================
   if (gameState === 'gameOver') {
     const sortedPlayers = [...players].sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
     return (
@@ -402,7 +485,7 @@ const GameBoard = () => {
           <div className="final-scores-list">
             {sortedPlayers.map((p, idx) => (
               <div key={p.id} className={`final-score-row ${idx === 0 ? 'top-winner' : ''}`}>
-                <span>{idx + 1}. {p.name} {p.isYou && '(You)'}</span>
+                <span>{idx + 1}. {p.name} {p.id === myId && '(You)'} {tokens[p.id] ? '🪙'.repeat(Math.min(tokens[p.id], 5)) : ''}</span>
                 <span>{scores[p.id] || 0} pts</span>
               </div>
             ))}
@@ -416,27 +499,77 @@ const GameBoard = () => {
     );
   }
 
-  /* --- CORE ACTIVE PLAYING SCREEN LAYOUT --- */
+  // ============================================
+  // WORD SELECTION
+  // ============================================
+  if (gameState === 'wordSelect') {
+    return (
+      <div className="gameplay-page-wrapper">
+        <div className="gameplay-container">
+          <header className="game-top-bar">
+            <button className="leave-game-btn" onClick={handleLeaveGame}><ArrowLeft size={18} /><span>Leave</span></button>
+            <div className="round-indicator">Round {currentRound} / {totalRounds}</div>
+          </header>
+          {(isArtist || isSolo) ? (
+            <div className="round-results-view">
+              <h1 className="result-status-title">Choose a word to draw</h1>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '1.5rem' }}>
+                {wordChoices.map((w) => (
+                  <button key={w} className="action-btn primary" onClick={() => handleWordChosen(w)}>{w}</button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="round-results-view">
+              <h1 className="result-status-title">
+                ✏️ {players.find(p => p.id === currentArtistId)?.name || 'Someone'} is choosing a word...
+              </h1>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================
+  // REWARD SCREEN — shown ONCE, after the final round, to let the
+  // overall winner hand out a truth or dare before final results.
+  // ============================================
+  if (gameState === 'reward') {
+    const winner = players.find(p => p.id === gameWinnerId);
+    return (
+      <div className="gameplay-page-wrapper">
+        <TruthDareScreen
+          winner={winner}
+          players={players}
+          tokens={tokens}
+          isWinner={gameWinnerId === myId}
+          onSendChallenge={(targetId, type, text) => {
+            if (socket) socket.emit('challenge-sent', { roomId, targetId, type, text });
+          }}
+          onContinue={() => setGameState('gameOver')}
+          socket={socket}
+        />
+      </div>
+    );
+  }
+
+  // ============================================
+  // ACTIVE PLAY / ROUND END
+  // ============================================
   return (
     <div className="gameplay-page-wrapper">
       <div className="gameplay-container dashboard-layout">
-        
-        {/* Top bar headers */}
+
         <header className="game-top-bar">
           <button className="leave-game-btn" onClick={handleLeaveGame}>
-            <ArrowLeft size={18} />
-            <span>Leave</span>
+            <ArrowLeft size={18} /><span>Leave</span>
           </button>
           <div className="round-indicator">Round {currentRound} / {totalRounds}</div>
           <div className="game-timer-clock">{formatTime(timeLeft)}</div>
-          {!isSolo && (
-            <span className="online-status">
-              {isConnected ? '🟢 Live' : '🔴 Connecting...'}
-            </span>
-          )}
+          {!isSolo && <span className="online-status">{isConnected ? '🟢 Live' : '🔴 Connecting...'}</span>}
         </header>
 
-        {/* ---------------- SCREEN 3: ROUND RESULTS STATE (Full Screen Panel) ---------------- */}
         {gameState === 'roundEnd' ? (
           <div className="round-results-view">
             <h1 className="result-status-title">{roundEndMessage || 'Round Ended!'}</h1>
@@ -448,25 +581,27 @@ const GameBoard = () => {
                 <div key={p.id} className="result-score-item">
                   <div className="player-info-meta">
                     <span className="rank-num">{idx + 1}</span>
-                    <span className="player-display-name">{p.name} {p.isYou && '(You)'}</span>
+                    <span className="player-display-name">
+                      {p.name} {p.id === myId && '(You)'} {tokens[p.id] ? '🪙'.repeat(Math.min(tokens[p.id], 5)) : ''}
+                    </span>
                   </div>
-                  <span className="points-display">{scores[p.id] || 0} pts</span>
+                  <span className="points-display">
+                    {roundScores[p.id] ? `+${roundScores[p.id]} · ` : ''}{scores[p.id] || 0} pts
+                  </span>
                 </div>
               ))}
             </div>
 
             <button className="main-action-btn" onClick={handleNextRound}>
-              NEXT ROUND
+              {currentRound >= totalRounds ? 'SEE FINAL RESULTS' : 'NEXT ROUND'}
             </button>
           </div>
         ) : (
-          /* ---------------- ACTIVE PLAY COHESIVE GRID ---------------- */
           <div className="gameplay-workspace-split">
-            
-            {/* LEFT SIDE: Canvas and Artist Tools */}
+
             <div className="left-workspace-panel">
               <div className="game-prompt-header">
-                {isCurrentArtist ? (
+                {(isArtist || isSolo) ? (
                   <>
                     <span className="prompt-label">Draw:</span>
                     <span className="prompt-word">{wordToDraw}</span>
@@ -477,7 +612,7 @@ const GameBoard = () => {
               </div>
 
               <div className="interactive-canvas-container">
-                <canvas 
+                <canvas
                   ref={canvasRef}
                   width={750}
                   height={460}
@@ -485,17 +620,16 @@ const GameBoard = () => {
                   onMouseMove={draw}
                   onMouseUp={stopDrawing}
                   onMouseLeave={stopDrawing}
-                  className={`game-drawing-surface ${!isCurrentArtist ? 'view-only' : ''}`}
+                  className={`game-drawing-surface ${(!isArtist && !isSolo) ? 'view-only' : ''}`}
                 />
-                {!isCurrentArtist && !isSolo && (
+                {!isArtist && !isSolo && (
                   <div className="view-only-overlay">
-                    <span>🎨 {currentArtist?.name} is drawing...</span>
+                    <span>🎨 {players.find(p => p.id === currentArtistId)?.name || 'Someone'} is drawing...</span>
                   </div>
                 )}
               </div>
 
-              {/* Tools display under canvas only if current user is the drawer */}
-              {isCurrentArtist && (
+              {(isArtist || isSolo) && (
                 <div className="artist-controls-footer">
                   <div className="drawing-tools-row">
                     <button className={`tool-btn ${tool === 'pencil' ? 'active' : ''}`} onClick={() => setTool('pencil')}>
@@ -504,18 +638,16 @@ const GameBoard = () => {
                     <button className={`tool-btn ${tool === 'eraser' ? 'active' : ''}`} onClick={() => setTool('eraser')}>
                       <Eraser size={20} />
                     </button>
-                    
                     <div className="color-palette-tray-inline">
                       {colors.map((c, i) => (
-                        <button 
-                          key={i} 
+                        <button
+                          key={i}
                           className={`color-swatch-circle ${color === c && tool !== 'eraser' ? 'selected' : ''}`}
                           style={{ backgroundColor: c }}
                           onClick={() => { setColor(c); setTool('pencil'); }}
                         />
                       ))}
                     </div>
-
                     <button className="tool-btn action-trash" onClick={clearCanvas}>
                       <Trash2 size={20} />
                     </button>
@@ -524,49 +656,57 @@ const GameBoard = () => {
               )}
             </div>
 
-            {/* RIGHT SIDE: Dedicated Guessing Side-Panel Container */}
             <div className="right-sidebar-panel">
               <div className="sidebar-chat-header">
                 <span className="chat-title-label">Live Guessing Arena</span>
               </div>
 
-              {/* Show text input field to guessers; show text indicator to drawer */}
-              {!isCurrentArtist ? (
-                <form className="guess-input-wrapper-row" onSubmit={handleGuess}>
-                  <input 
-                    type="text" 
-                    placeholder="Type your guess..."
-                    value={guessText}
-                    onChange={(e) => setGuessText(e.target.value)}
-                  />
-                  <button type="submit" className="submit-guess-round-btn">
-                    <Send size={18} />
-                  </button>
-                </form>
-              ) : (
-                <div className="artist-chat-restriction-message">
-                  You are drawing! Watch their guesses stream in.
-                </div>
+              <form className="guess-input-wrapper-row" onSubmit={handleGuess}>
+                <input
+                  type="text"
+                  placeholder={
+                    (isArtist && !isSolo) ? "Chat with players..." :
+                    (alreadyGuessed ? "You already guessed it!" : "Type your guess...")
+                  }
+                  value={guessText}
+                  onChange={(e) => setGuessText(e.target.value)}
+                  disabled={!(isArtist || isSolo) && alreadyGuessed}
+                />
+                <button
+                  type="submit"
+                  className="submit-guess-round-btn"
+                  disabled={!(isArtist || isSolo) && alreadyGuessed}
+                >
+                  <Send size={18} />
+                </button>
+              </form>
+              {isArtist && !isSolo && (
+                <p className="artist-chat-restriction-message" style={{ fontSize: '0.8rem', opacity: 0.75 }}>
+                  You're drawing — you can chat, but it won't count as a guess.
+                </p>
+              )}
+              {!(isArtist || isSolo) && alreadyGuessed && (
+                <p className="artist-chat-restriction-message" style={{ fontSize: '0.8rem', opacity: 0.75 }}>
+                  ✓ Guessed correctly — waiting for the round to end.
+                </p>
               )}
 
-              {/* Interactive running log stack */}
               <div className="live-guesses-stack">
                 {guesses.length === 0 ? (
                   <p className="no-guesses-fallback">Waiting for guesses...</p>
                 ) : (
                   guesses.map((g, idx) => (
-                    <div key={idx} className={`live-guess-card ${g.isCorrect ? 'correct-match' : ''}`}>
+                    <div key={idx} className={`live-guess-card ${g.isCorrect ? 'correct-match' : ''} ${g.isChat ? 'chat-only' : ''}`}>
                       <div className="guess-text-content">
                         <strong>{g.player}: </strong>
-                        <span>{g.guess}</span>
+                        <span>{g.isCorrect ? '✓ guessed the word!' : g.guess}</span>
                       </div>
-                      {g.isCorrect && <span className="checkmark">✓ Match</span>}
+                      {g.isCorrect && <span className="checkmark">✓ +{g.points}</span>}
                     </div>
                   ))
                 )}
               </div>
             </div>
-
           </div>
         )}
       </div>
@@ -574,4 +714,4 @@ const GameBoard = () => {
   );
 };
 
-export default GameBoard;
+export default GamePlay;
