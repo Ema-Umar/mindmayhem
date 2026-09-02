@@ -129,29 +129,36 @@ const Dashboard = () => {
     }
   }, [API_URL]);
 
-  const handleJoinRoom = useCallback((roomId, roomName) => {
-    if (!roomId) return;
-    const roomToJoin = rooms.find(r => r.id === roomId || r.roomId === roomId);
+ const handleJoinRoom = useCallback(async (roomId, roomName) => {
+  if (!roomId) return;
+  const myId = user?.id || user?._id;
+  const roomToJoin = rooms.find(r => r.id === roomId || r.roomId === roomId);
 
-    if (roomToJoin) {
-      const roomData = {
-        roomId: String(roomId),
-        id: String(roomId),
-        roomName: roomToJoin.name || roomName || 'Game Room',
-        roomCode: roomToJoin.roomCode || 'XXXXXX',
-        gameMode: roomToJoin.gameMode || 'Normal',
-        maxPlayers: roomToJoin.maxPlayers || 10,
-        rounds: roomToJoin.rounds || 5,
-        status: roomToJoin.status || 'waiting',
-        host: roomToJoin.host || user?.id,
-        hostName: roomToJoin.host || user?.username || 'Host',
-        players: roomToJoin.playersList || []
-      };
+  const alreadyIn = roomToJoin?.playersList?.some(p => {
+    const pId = p.id?._id || p.id;
+    return String(pId) === String(myId);
+  });
 
-      localStorage.setItem('currentRoom', JSON.stringify(roomData));
+  if (alreadyIn) {
+    navigate(`/room/${roomId}`);
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    await axios.post(`${API_URL}/rooms/${roomId}/join`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    navigate(`/room/${roomId}`);
+  } catch (err) {
+    if (err.response?.data?.message === 'Already in room') {
       navigate(`/room/${roomId}`);
+      return;
     }
-  }, [rooms, user, navigate]);
+    console.error('Join room error:', err);
+    alert(err.response?.data?.message || 'Failed to join room.');
+  }
+}, [rooms, user, navigate]);
 
   const handleCreateRoom = useCallback(() => {
     navigate('/create-room');
@@ -274,12 +281,14 @@ const Dashboard = () => {
             <div className="player-stats-column">
               <h3 className="player-display-name">{user?.username || 'Gamer'}</h3>
               <div className="player-level-row">
-                <span>Level {Math.floor((user?.gamesWon || 0) / 5) + 1}</span>
+               <span>Level {user?.gamesPlayed > 0 ? Math.floor((user?.gamesWon || 0) / 5) + 1 : 0}</span>
                 <span className="divider-dot">•</span>
                 <span>{user?.gamesWon || 0} / 1200 XP</span>
               </div>
               <div className="mini-xp-bar-track">
-                <div className="mini-xp-bar-fill" style={{ width: `${Math.min(((user?.gamesWon || 0) % 5) * 20 || 15, 100)}%` }}></div>
+<div className="mini-xp-bar-fill" style={{ 
+  width: `${user?.gamesWon > 0 ? Math.min(((user?.gamesWon || 0) % 5) * 20, 100) : 0}%` 
+}}></div>
               </div>
             </div>
           </div>

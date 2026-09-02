@@ -70,13 +70,9 @@ const CreateRoom = () => {
   };
 
  // Replace the handleSubmit function with this updated version
-
 const handleSubmit = async (e) => {
   e.preventDefault();
-  
-  if (!validateForm()) {
-    return;
-  }
+  if (!validateForm()) return;
 
   setLoading(true);
   setError('');
@@ -90,76 +86,17 @@ const handleSubmit = async (e) => {
       return;
     }
 
-    const userData = JSON.parse(localStorage.getItem('user') || '{}');
-    const roomCode = generateRoomCode();
-
-    const roomData = {
-      roomName: roomName.trim(),
-      roomCode,
-      gameMode,
-      maxPlayers,
-      rounds: parseInt(rounds) || 5,
-      roomType,
-      host: userData.id || userData._id,
-      hostName: userData.username || 'Unknown',
-    };
-
-    let response;
-    try {
-      // Try to create room via backend
-      response = await axios.post(
-        `${API_URL}/rooms/create`,
-        roomData,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-    } catch (apiError) {
-      console.log('Backend not available, using localStorage fallback');
-      
-      // Fallback: Store in localStorage
-      const existingRooms = JSON.parse(localStorage.getItem('rooms') || '[]');
-      const newRoom = {
-        ...roomData,
-        id: Date.now(),
-        roomId: `room_${Date.now()}`,
-        players: [{
-          id: userData.id || userData._id,
-          username: userData.username,
-          avatar: userData.avatar,
-          isHost: true,
-          isReady: false
-        }],
-        status: 'waiting',
-        createdAt: new Date().toISOString()
-      };
-      existingRooms.push(newRoom);
-      localStorage.setItem('rooms', JSON.stringify(existingRooms));
-      localStorage.setItem('currentRoom', JSON.stringify(newRoom));
-      
-      response = {
-        data: {
-          success: true,
-          room: newRoom
-        }
-      };
-    }
+    const response = await axios.post(
+      `${API_URL}/rooms/create`,
+      { roomName: roomName.trim(), gameMode, maxPlayers, rounds: parseInt(rounds) || 5, roomType },
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+    );
 
     if (response.data.success) {
       setSuccess(true);
-      
-      // Save room info
-      localStorage.setItem('currentRoom', JSON.stringify(response.data.room));
-      
-      setTimeout(() => {
-        const roomId = response.data.room.roomId || response.data.room.id;
-        navigate(`/room/${roomId}`);
-      }, 1500);
+      const newRoomId = response.data.room.id; // ALWAYS this field — see server response shape
+      setTimeout(() => navigate(`/room/${newRoomId}`), 1500);
     }
-
   } catch (error) {
     console.error('Create room error:', error);
     setError(error.response?.data?.message || 'Failed to create room. Please try again.');
@@ -167,6 +104,8 @@ const handleSubmit = async (e) => {
     setLoading(false);
   }
 };
+
+
   // Game mode options
   const gameModes = {
     normal: { icon: '🎨', label: 'Normal', desc: 'Classic Draw & Guess' },
